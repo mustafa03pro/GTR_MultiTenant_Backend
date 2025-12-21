@@ -42,6 +42,13 @@ public class SalesInvoiceController {
         return ResponseEntity.ok(salesInvoiceService.updateSalesInvoice(id, request, files));
     }
 
+    @PutMapping(value = "/{id}", consumes = { MediaType.APPLICATION_JSON_VALUE })
+    public ResponseEntity<SalesInvoiceResponse> updateSalesInvoiceJson(
+            @PathVariable Long id,
+            @RequestBody SalesInvoiceRequest request) {
+        return ResponseEntity.ok(salesInvoiceService.updateSalesInvoice(id, request, null));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<SalesInvoiceResponse> getSalesInvoiceById(@PathVariable Long id) {
         return ResponseEntity.ok(salesInvoiceService.getSalesInvoiceById(id));

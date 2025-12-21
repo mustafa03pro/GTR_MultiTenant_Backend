@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(transactionManager = "tenantTx")
 public class RentalQuotationService {
 
     private final RentalQuotationRepository rentalQuotationRepository;
@@ -43,7 +44,7 @@ public class RentalQuotationService {
     private final EmployeeRepository employeeRepository;
     private final FileStorageService fileStorageService;
 
-    @Transactional
+    @Transactional(transactionManager = "tenantTx")
     public RentalQuotationResponse createRentalQuotation(RentalQuotationRequest request,
             org.springframework.web.multipart.MultipartFile[] attachments) {
         String tenantIdentifier = TenantContext.getTenantId();
@@ -76,7 +77,7 @@ public class RentalQuotationService {
         return mapEntityToResponse(savedQuotation);
     }
 
-    @Transactional
+    @Transactional(transactionManager = "tenantTx")
     public RentalQuotationResponse updateRentalQuotation(Long id, RentalQuotationRequest request,
             org.springframework.web.multipart.MultipartFile[] attachments) {
         String tenantIdentifier = TenantContext.getTenantId();
@@ -109,7 +110,7 @@ public class RentalQuotationService {
         return mapEntityToResponse(updatedQuotation);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, transactionManager = "tenantTx")
     public RentalQuotationResponse getRentalQuotationById(Long id) {
         String tenantIdentifier = TenantContext.getTenantId();
         Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)
@@ -121,7 +122,7 @@ public class RentalQuotationService {
         return mapEntityToResponse(quotation);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, transactionManager = "tenantTx")
     public Page<RentalQuotationResponse> getAllRentalQuotations(Pageable pageable) {
         String tenantIdentifier = TenantContext.getTenantId();
         Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)
@@ -131,7 +132,28 @@ public class RentalQuotationService {
                 .map(this::mapEntityToResponse);
     }
 
-    @Transactional
+    @Transactional(readOnly = true, transactionManager = "tenantTx")
+    public Page<RentalQuotationResponse> getAllRentalQuotations(String customerName, java.time.LocalDate fromDate,
+            java.time.LocalDate toDate, com.example.multi_tanent.sales.enums.SalesStatus status,
+            Long salespersonId, com.example.multi_tanent.sales.enums.QuotationType quotationType, Pageable pageable) {
+        String tenantIdentifier = TenantContext.getTenantId();
+        Tenant tenant;
+
+        if (tenantIdentifier == null) {
+            tenant = tenantRepository.findFirstByOrderByIdAsc()
+                    .orElseThrow(() -> new EntityNotFoundException("No default tenant found"));
+        } else {
+            tenant = tenantRepository.findByTenantId(tenantIdentifier)
+                    .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+        }
+
+        return rentalQuotationRepository
+                .searchRentalQuotations(tenant.getId(), customerName, fromDate, toDate, status, salespersonId,
+                        quotationType, pageable)
+                .map(this::mapEntityToResponse);
+    }
+
+    @Transactional(transactionManager = "tenantTx")
     public void deleteRentalQuotation(Long id) {
         String tenantIdentifier = TenantContext.getTenantId();
         Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)
@@ -143,7 +165,7 @@ public class RentalQuotationService {
         rentalQuotationRepository.delete(quotation);
     }
 
-    @Transactional
+    @Transactional(transactionManager = "tenantTx")
     public RentalQuotationResponse updateStatus(Long id, SalesStatus status) {
         String tenantIdentifier = TenantContext.getTenantId();
         Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)
@@ -151,6 +173,22 @@ public class RentalQuotationService {
 
         RentalQuotation quotation = rentalQuotationRepository.findByIdAndTenantId(id, tenant.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Rental Quotation not found"));
+
+        quotation.setStatus(status);
+        RentalQuotation updatedQuotation = rentalQuotationRepository.save(quotation);
+        return mapEntityToResponse(updatedQuotation);
+    }
+
+    @Transactional(transactionManager = "tenantTx")
+    public RentalQuotationResponse updateStatusByQuotationNumber(String quotationNumber, SalesStatus status) {
+        String tenantIdentifier = TenantContext.getTenantId();
+        Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+
+        RentalQuotation quotation = rentalQuotationRepository
+                .findByQuotationNumberAndTenantId(quotationNumber, tenant.getId())
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Rental Quotation not found with number: " + quotationNumber));
 
         quotation.setStatus(status);
         RentalQuotation updatedQuotation = rentalQuotationRepository.save(quotation);

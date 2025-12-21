@@ -12,4 +12,6 @@ public class CrmLeadStageRequest {
     private boolean isDefault;
 
     private Long locationId; // Optional
+
+    private String moveTo;
 }

@@ -1,6 +1,6 @@
 package com.example.multi_tanent.tenant.payroll.controller;
 
-import com.example.multi_tanent.tenant.base.entity.CompanyInfo;
+import com.example.multi_tanent.spersusers.enitity.CompanyInfo;
 import com.example.multi_tanent.tenant.payroll.dto.CompanyInfoRequest;
 import com.example.multi_tanent.tenant.payroll.dto.CompanyInfoResponse;
 import com.example.multi_tanent.tenant.payroll.service.CompanyInfoService;
@@ -17,7 +17,6 @@ import java.io.IOException;
 @RestController
 @RequestMapping("/api/company-info")
 @CrossOrigin(origins = "*")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','HRMS_ADMIN','HR','MANAGER')")
 public class CompanyInfoController {
 
     private final CompanyInfoService companyInfoService;

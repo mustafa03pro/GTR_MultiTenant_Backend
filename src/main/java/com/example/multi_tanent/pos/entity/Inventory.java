@@ -11,8 +11,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "inventory",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"store_id", "product_variant_id"}))
+@Table(name = "inventory", uniqueConstraints = @UniqueConstraint(columnNames = { "store_id", "product_variant_id" }))
 public class Inventory {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -31,7 +31,10 @@ public class ProductController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','POS_ADMIN', 'POS_MANAGER')")
-    public ResponseEntity<Product> createProduct(@Valid @RequestBody ProductRequest productRequest) { // Keeping Product for create response consistency
+    public ResponseEntity<Product> createProduct(@Valid @RequestBody ProductRequest productRequest) { // Keeping Product
+                                                                                                      // for create
+                                                                                                      // response
+                                                                                                      // consistency
         Product createdProduct = productService.createProduct(productRequest);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
@@ -61,7 +64,8 @@ public class ProductController {
         try {
             byte[] excelContent = productService.generateBulkAddTemplate();
             HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+            headers.setContentType(
+                    MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
             headers.setContentDispositionFormData("attachment", "product_bulk_upload_template.xlsx");
             return ResponseEntity.ok().headers(headers).body(excelContent);
         } catch (IOException e) {
@@ -69,7 +73,6 @@ public class ProductController {
             return ResponseEntity.internalServerError().build();
         }
     }
-
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
@@ -93,7 +96,8 @@ public class ProductController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','POS_ADMIN', 'POS_MANAGER')")
-    public ResponseEntity<ProductDto> updateProduct(@PathVariable Long id, @Valid @RequestBody ProductRequest productRequest) {
+    public ResponseEntity<ProductDto> updateProduct(@PathVariable Long id,
+            @Valid @RequestBody ProductRequest productRequest) {
         return ResponseEntity.ok(productService.updateProduct(id, productRequest));
     }
 
@@ -101,6 +105,13 @@ public class ProductController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','POS_ADMIN')")
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
         productService.deleteProduct(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/hard")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','POS_ADMIN')")
+    public ResponseEntity<Void> hardDeleteProduct(@PathVariable Long id) {
+        productService.hardDeleteProduct(id);
         return ResponseEntity.noContent().build();
     }
 }

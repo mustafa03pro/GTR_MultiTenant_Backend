@@ -1,12 +1,13 @@
 package com.example.multi_tanent.tenant.payroll.dto;
 
-import com.example.multi_tanent.tenant.base.entity.CompanyInfo;
 import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import com.example.multi_tanent.spersusers.enitity.CompanyInfo;
 
 @Data
 @Builder
@@ -30,7 +31,8 @@ public class CompanyInfoResponse {
     private List<CompanyBankAccountResponse> bankAccounts;
 
     public static CompanyInfoResponse fromEntity(CompanyInfo entity) {
-        if (entity == null) return null;
+        if (entity == null)
+            return null;
         CompanyInfoResponseBuilder builder = CompanyInfoResponse.builder()
                 .id(entity.getId())
                 .companyName(entity.getCompanyName())

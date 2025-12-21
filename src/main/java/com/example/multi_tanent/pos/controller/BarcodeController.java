@@ -21,19 +21,23 @@ public class BarcodeController {
         this.productVariantRepository = productVariantRepository;
     }
 
-    @GetMapping(value = "/qr/variant/{variantId}", produces = MediaType.IMAGE_PNG_VALUE)
+    @GetMapping(value = "/variant/{variantId}", produces = MediaType.IMAGE_JPEG_VALUE)
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<byte[]> generateQRCodeForVariant(
+    public ResponseEntity<byte[]> generateBarcodeForVariant(
             @PathVariable Long variantId,
             @RequestParam(defaultValue = "250") int width,
-            @RequestParam(defaultValue = "250") int height) {
-        
+            @RequestParam(defaultValue = "150") int height) {
+
         ProductVariant variant = productVariantRepository.findById(variantId)
                 .orElseThrow(() -> new RuntimeException("ProductVariant not found with id: " + variantId));
 
         try {
-            byte[] qrCode = barCodeService.generateProductVariantQRCode(variant, width, height);
-            return ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).body(qrCode);
+            String barcodeText = variant.getBarcode();
+            if (barcodeText == null || barcodeText.isEmpty()) {
+                return ResponseEntity.badRequest().body(null);
+            }
+            byte[] barcode = barCodeService.generateBarcodeImage(barcodeText, width, height);
+            return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG).body(barcode);
         } catch (Exception e) {
             // Log the exception
             return ResponseEntity.internalServerError().build();

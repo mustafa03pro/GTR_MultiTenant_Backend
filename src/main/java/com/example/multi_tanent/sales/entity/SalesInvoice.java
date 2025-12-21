@@ -68,7 +68,7 @@ public class SalesInvoice {
     @Column(name = "delay_reason")
     private String delayReason;
 
-    @OneToMany(mappedBy = "salesInvoice", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "salesInvoice", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<SalesInvoiceItem> items = new ArrayList<>();
 
     @Column(name = "sub_total")
@@ -96,6 +96,7 @@ public class SalesInvoice {
     private BigDecimal balanceDue;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 50)
     private SalesStatus status;
 
     @Lob
@@ -105,7 +106,7 @@ public class SalesInvoice {
     @Lob
     private String notes;
 
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "sales_invoice_attachments", joinColumns = @JoinColumn(name = "sales_invoice_id"))
     @Column(name = "attachment_url")
     private List<String> attachments = new ArrayList<>();

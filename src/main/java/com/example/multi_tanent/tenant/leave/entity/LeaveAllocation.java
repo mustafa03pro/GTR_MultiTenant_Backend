@@ -9,8 +9,8 @@ import java.time.LocalDate;
 import com.example.multi_tanent.spersusers.enitity.Employee;
 
 @Entity
-@Table(name = "leave_allocations",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"employee_id", "leave_type_id", "period_start", "period_end"}))
+@Table(name = "leave_allocations", uniqueConstraints = @UniqueConstraint(columnNames = { "employee_id", "leave_type_id",
+        "period_start", "period_end" }))
 @Data
 @Builder
 @NoArgsConstructor
@@ -34,8 +34,10 @@ public class LeaveAllocation {
     private BigDecimal allocatedDays;
 
     // period for which allocation applies (e.g., year)
+    @Column(name = "period_start")
     private LocalDate periodStart;
 
+    @Column(name = "period_end")
     private LocalDate periodEnd;
 
     // reason or source (e.g., "Policy 2025", "Manual Adjustment")

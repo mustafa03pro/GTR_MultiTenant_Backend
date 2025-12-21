@@ -38,6 +38,7 @@ public class PurPurchaseOrderResponse {
     private BigDecimal totalTax;
     private BigDecimal otherCharges;
     private BigDecimal totalAmount;
+    private BigDecimal grossTotal;
 
     private List<PurPurchaseOrderItemResponse> items;
     private List<PurPurchaseOrderAttachmentResponse> attachments;

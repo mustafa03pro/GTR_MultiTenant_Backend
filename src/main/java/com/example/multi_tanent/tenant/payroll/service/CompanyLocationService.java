@@ -1,7 +1,7 @@
 package com.example.multi_tanent.tenant.payroll.service;
 
-import com.example.multi_tanent.tenant.base.entity.CompanyInfo;
-import com.example.multi_tanent.tenant.base.entity.CompanyLocation;
+import com.example.multi_tanent.spersusers.enitity.CompanyInfo;
+import com.example.multi_tanent.spersusers.enitity.CompanyLocation;
 import com.example.multi_tanent.tenant.payroll.dto.CompanyLocationRequest;
 import com.example.multi_tanent.tenant.payroll.repository.CompanyInfoRepository;
 import com.example.multi_tanent.tenant.payroll.repository.CompanyLocationRepository;
@@ -17,7 +17,8 @@ public class CompanyLocationService {
     private final CompanyLocationRepository locationRepository;
     private final CompanyInfoRepository companyInfoRepository;
 
-    public CompanyLocationService(CompanyLocationRepository locationRepository, CompanyInfoRepository companyInfoRepository) {
+    public CompanyLocationService(CompanyLocationRepository locationRepository,
+            CompanyInfoRepository companyInfoRepository) {
         this.locationRepository = locationRepository;
         this.companyInfoRepository = companyInfoRepository;
     }
@@ -28,7 +29,8 @@ public class CompanyLocationService {
 
     public CompanyLocation createLocation(CompanyLocationRequest request) {
         CompanyInfo companyInfo = companyInfoRepository.findAll().stream().findFirst()
-                .orElseThrow(() -> new IllegalStateException("CompanyInfo not found for this tenant. Please create it first."));
+                .orElseThrow(() -> new IllegalStateException(
+                        "CompanyInfo not found for this tenant. Please create it first."));
 
         CompanyLocation location = new CompanyLocation();
         mapRequestToEntity(request, location);

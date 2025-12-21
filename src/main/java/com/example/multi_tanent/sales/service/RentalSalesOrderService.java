@@ -11,6 +11,7 @@ import com.example.multi_tanent.sales.dto.*;
 import com.example.multi_tanent.sales.entity.RentalSalesOrder;
 import com.example.multi_tanent.sales.entity.RentalSalesOrderItem;
 import com.example.multi_tanent.sales.repository.RentalSalesOrderRepository;
+import com.example.multi_tanent.sales.enums.SalesStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.example.multi_tanent.spersusers.enitity.BaseCustomer;
@@ -27,6 +28,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -43,7 +46,7 @@ public class RentalSalesOrderService {
     private final FileStorageService fileStorageService;
 
     @Transactional
-    public RentalSalesOrderResponse createRentalSalesOrder(RentalSalesOrderRequest request, List<MultipartFile> files) {
+    public RentalSalesOrderResponse createRentalSalesOrder(RentalSalesOrderRequest request, MultipartFile[] files) {
         String tenantIdentifier = TenantContext.getTenantId();
         Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Tenant not found"));
@@ -64,7 +67,7 @@ public class RentalSalesOrderService {
 
         mapRequestToEntity(request, order, tenant.getId());
 
-        if (files != null && !files.isEmpty()) {
+        if (files != null && files.length > 0) {
             List<String> attachmentUrls = new ArrayList<>();
             for (MultipartFile file : files) {
                 if (!file.isEmpty()) {
@@ -83,7 +86,7 @@ public class RentalSalesOrderService {
 
     @Transactional
     public RentalSalesOrderResponse updateRentalSalesOrder(Long id, RentalSalesOrderRequest request,
-            List<MultipartFile> files) {
+            MultipartFile[] files) {
         String tenantIdentifier = TenantContext.getTenantId();
         Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Tenant not found"));
@@ -99,7 +102,7 @@ public class RentalSalesOrderService {
 
         mapRequestToEntity(request, order, tenant.getId());
 
-        if (files != null && !files.isEmpty()) {
+        if (files != null && files.length > 0) {
             if (order.getAttachments() == null) {
                 order.setAttachments(new ArrayList<>());
             }
@@ -149,6 +152,20 @@ public class RentalSalesOrderService {
         RentalSalesOrder order = rentalSalesOrderRepository.findByIdAndTenantId(id, tenant.getId())
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Rental Sales Order not found"));
         rentalSalesOrderRepository.delete(order);
+    }
+
+    @Transactional
+    public RentalSalesOrderResponse updateStatus(Long id, SalesStatus status) {
+        String tenantIdentifier = TenantContext.getTenantId();
+        Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Tenant not found"));
+
+        RentalSalesOrder order = rentalSalesOrderRepository.findByIdAndTenantId(id, tenant.getId())
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Rental Sales Order not found"));
+
+        order.setStatus(status);
+        RentalSalesOrder savedOrder = rentalSalesOrderRepository.save(order);
+        return mapEntityToResponse(savedOrder);
     }
 
     private void mapRequestToEntity(RentalSalesOrderRequest request, RentalSalesOrder order, Long tenantId) {
@@ -211,16 +228,24 @@ public class RentalSalesOrderService {
 
         // Map Items
         if (request.getItems() != null) {
-            // Clear existing items and rebuild to handle updates simply
-            if (order.getItems() != null) {
-                order.getItems().clear();
-            } else {
+            if (order.getItems() == null) {
                 order.setItems(new ArrayList<>());
             }
 
+            Map<Long, RentalSalesOrderItem> existingItemsMap = order.getItems().stream()
+                    .collect(Collectors.toMap(RentalSalesOrderItem::getId, Function.identity()));
+
+            List<RentalSalesOrderItem> updatedItems = new ArrayList<>();
+
             for (RentalSalesOrderItemRequest itemRequest : request.getItems()) {
-                RentalSalesOrderItem item = new RentalSalesOrderItem();
-                item.setRentalSalesOrder(order);
+                RentalSalesOrderItem item = null;
+
+                if (itemRequest.getId() != null && existingItemsMap.containsKey(itemRequest.getId())) {
+                    item = existingItemsMap.get(itemRequest.getId());
+                } else {
+                    item = new RentalSalesOrderItem();
+                    item.setRentalSalesOrder(order);
+                }
 
                 if (itemRequest.getCrmProductId() != null) {
                     CrmSalesProduct product = crmSalesProductRepository
@@ -266,8 +291,11 @@ public class RentalSalesOrderService {
                 }
                 item.setAmount(amount);
 
-                order.getItems().add(item);
+                updatedItems.add(item);
             }
+
+            order.getItems().clear();
+            order.getItems().addAll(updatedItems);
         }
     }
 

@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(transactionManager = "tenantTx")
 public class QuotationService {
 
     private final QuotationRepository quotationRepository;
@@ -41,7 +42,7 @@ public class QuotationService {
     private final com.example.multi_tanent.tenant.employee.repository.EmployeeRepository employeeRepository;
     private final com.example.multi_tanent.tenant.service.FileStorageService fileStorageService;
 
-    @Transactional
+    @Transactional(transactionManager = "tenantTx")
     public QuotationResponse createQuotation(QuotationRequest request,
             org.springframework.web.multipart.MultipartFile[] attachments) {
         String tenantIdentifier = TenantContext.getTenantId();
@@ -74,7 +75,7 @@ public class QuotationService {
         return mapEntityToResponse(savedQuotation);
     }
 
-    @Transactional
+    @Transactional(transactionManager = "tenantTx")
     public QuotationResponse updateQuotation(Long id, QuotationRequest request,
             org.springframework.web.multipart.MultipartFile[] attachments) {
         String tenantIdentifier = TenantContext.getTenantId();
@@ -107,7 +108,7 @@ public class QuotationService {
         return mapEntityToResponse(updatedQuotation);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, transactionManager = "tenantTx")
     public QuotationResponse getQuotationById(Long id) {
         String tenantIdentifier = TenantContext.getTenantId();
         Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)
@@ -119,17 +120,52 @@ public class QuotationService {
         return mapEntityToResponse(quotation);
     }
 
-    @Transactional(readOnly = true)
-    public Page<QuotationResponse> getAllQuotations(Pageable pageable) {
+    @Transactional(readOnly = true, transactionManager = "tenantTx")
+    public Page<QuotationResponse> getAllQuotations(String customerName, java.time.LocalDate startDate,
+            java.time.LocalDate endDate, String quotationType, SalesStatus status, Long salespersonId,
+            Pageable pageable) {
         String tenantIdentifier = TenantContext.getTenantId();
         Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)
                 .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
-        return quotationRepository.findByTenantId(tenant.getId(), pageable)
-                .map(this::mapEntityToResponse);
+        org.springframework.data.jpa.domain.Specification<Quotation> spec = (root, query, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("tenant").get("id"), tenant.getId()));
+
+            if (customerName != null && !customerName.isEmpty()) {
+                predicates.add(cb.like(cb.lower(root.get("customer").get("companyName")),
+                        "%" + customerName.toLowerCase() + "%"));
+            }
+            if (startDate != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("quotationDate"), startDate));
+            }
+            if (endDate != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("quotationDate"), endDate));
+            }
+            if (quotationType != null && !quotationType.isEmpty() && !"All".equalsIgnoreCase(quotationType)) {
+                try {
+                    predicates.add(cb.equal(root.get("quotationType"),
+                            com.example.multi_tanent.sales.enums.QuotationType.valueOf(quotationType.toUpperCase())));
+                } catch (Exception e) {
+                    // ignore invalid type
+                }
+            }
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+            if (salespersonId != null) {
+                predicates.add(cb.equal(root.get("salesperson").get("id"), salespersonId));
+            }
+
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+
+        Page<Quotation> page = quotationRepository.findAll(spec, pageable);
+
+        return page.map(this::mapEntityToResponse);
     }
 
-    @Transactional
+    @Transactional(transactionManager = "tenantTx")
     public void deleteQuotation(Long id) {
         String tenantIdentifier = TenantContext.getTenantId();
         Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)
@@ -141,7 +177,6 @@ public class QuotationService {
         quotationRepository.delete(quotation);
     }
 
-    @Transactional
     public QuotationResponse updateStatus(Long id, SalesStatus status) {
         String tenantIdentifier = TenantContext.getTenantId();
         Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)
@@ -149,6 +184,20 @@ public class QuotationService {
 
         Quotation quotation = quotationRepository.findByIdAndTenantId(id, tenant.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Quotation not found"));
+
+        quotation.setStatus(status);
+        Quotation updatedQuotation = quotationRepository.save(quotation);
+        return mapEntityToResponse(updatedQuotation);
+    }
+
+    @Transactional(transactionManager = "tenantTx")
+    public QuotationResponse updateStatusByNumber(String quotationNumber, SalesStatus status) {
+        String tenantIdentifier = TenantContext.getTenantId();
+        Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+
+        Quotation quotation = quotationRepository.findByQuotationNumberAndTenantId(quotationNumber, tenant.getId())
+                .orElseThrow(() -> new EntityNotFoundException("Quotation not found with number: " + quotationNumber));
 
         quotation.setStatus(status);
         Quotation updatedQuotation = quotationRepository.save(quotation);

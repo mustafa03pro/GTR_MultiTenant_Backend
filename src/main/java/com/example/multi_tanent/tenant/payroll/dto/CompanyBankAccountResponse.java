@@ -1,6 +1,6 @@
 package com.example.multi_tanent.tenant.payroll.dto;
 
-import com.example.multi_tanent.tenant.base.entity.CompanyBankAccount;
+import com.example.multi_tanent.spersusers.enitity.CompanyBankAccount;
 
 import lombok.Data;
 
@@ -15,7 +15,8 @@ public class CompanyBankAccountResponse {
     private boolean isPrimary;
 
     public static CompanyBankAccountResponse fromEntity(CompanyBankAccount account) {
-        if (account == null) return null;
+        if (account == null)
+            return null;
         CompanyBankAccountResponse dto = new CompanyBankAccountResponse();
         dto.setId(account.getId());
         dto.setBankName(account.getBankName());

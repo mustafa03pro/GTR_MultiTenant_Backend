@@ -2,7 +2,7 @@ package com.example.multi_tanent.tenant.payroll.service;
 
 import com.example.multi_tanent.tenant.payroll.entity.EmployeeBankAccount;
 import com.example.multi_tanent.tenant.payroll.dto.PayslipPdfData;
-import com.example.multi_tanent.tenant.base.entity.CompanyInfo;
+import com.example.multi_tanent.spersusers.enitity.CompanyInfo;
 import com.example.multi_tanent.tenant.payroll.dto.FinalSettlementPdfData;
 import com.example.multi_tanent.tenant.payroll.entity.PayslipTemplate;
 import com.example.multi_tanent.tenant.payroll.repository.PayslipTemplateRepository;
@@ -42,181 +42,205 @@ import java.util.stream.Collectors;
 
 @Service
 public class PdfGenerationService {
-    private final PdfEosSettlement pdfEosSettlement;
-    private final FileStorageService fileStorageService;
-    private final PayslipTemplateRepository payslipTemplateRepository;
-    private final EmployeeBankAccountRepository employeeBankAccountRepository;
-    private PdfFont regularFont;
-    private PdfFont boldFont;
+  private final PdfEosSettlement pdfEosSettlement;
+  private final FileStorageService fileStorageService;
+  private final PayslipTemplateRepository payslipTemplateRepository;
+  private final EmployeeBankAccountRepository employeeBankAccountRepository;
+  private PdfFont regularFont;
+  private PdfFont boldFont;
 
-    public PdfGenerationService(PayslipTemplateRepository payslipTemplateRepository,
-                                FileStorageService fileStorageService,
-                                EmployeeBankAccountRepository employeeBankAccountRepository,
-                                PdfEosSettlement pdfEosSettlement) { // Still needed for Final Settlement
-        // In a real application, you would load a font that supports Arabic, like Arial or Noto Sans Arabic.
-        // For this example, we will use a standard font and assume it can render the text.
-        try {
-            // Load a font that supports Arabic. Place the .ttf file in src/main/resources/fonts
-            ClassPathResource fontRes = new ClassPathResource("fonts/NotoNaskhArabic-Regular.ttf");
-            byte[] fontBytes = fontRes.getInputStream().readAllBytes();
-            this.regularFont = PdfFontFactory.createFont(fontBytes, PdfEncodings.IDENTITY_H, PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
-            this.boldFont = PdfFontFactory.createFont(fontBytes, PdfEncodings.IDENTITY_H, PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED); // Using same font for bold for simplicity
-        } catch (IOException e) {
-           // Fallback to default font if the custom font is not found
-            System.err.println("Custom Arabic font not found, falling back to default. Arabic text will not render correctly.");
-            // throw new RuntimeException("Failed to load fonts for PDF generation", e);
-        }
-        this.payslipTemplateRepository = payslipTemplateRepository;
-        this.fileStorageService = fileStorageService;
-        this.employeeBankAccountRepository = employeeBankAccountRepository;
-        this.pdfEosSettlement = pdfEosSettlement;
+  public PdfGenerationService(PayslipTemplateRepository payslipTemplateRepository,
+      FileStorageService fileStorageService,
+      EmployeeBankAccountRepository employeeBankAccountRepository,
+      PdfEosSettlement pdfEosSettlement) { // Still needed for Final Settlement
+    // In a real application, you would load a font that supports Arabic, like Arial
+    // or Noto Sans Arabic.
+    // For this example, we will use a standard font and assume it can render the
+    // text.
+    try {
+      // Load a font that supports Arabic. Place the .ttf file in
+      // src/main/resources/fonts
+      ClassPathResource fontRes = new ClassPathResource("fonts/NotoNaskhArabic-Regular.ttf");
+      byte[] fontBytes = fontRes.getInputStream().readAllBytes();
+      this.regularFont = PdfFontFactory.createFont(fontBytes, PdfEncodings.IDENTITY_H,
+          PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+      this.boldFont = PdfFontFactory.createFont(fontBytes, PdfEncodings.IDENTITY_H,
+          PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED); // Using same font for bold for simplicity
+    } catch (IOException e) {
+      // Fallback to default font if the custom font is not found
+      System.err
+          .println("Custom Arabic font not found, falling back to default. Arabic text will not render correctly.");
+      // throw new RuntimeException("Failed to load fonts for PDF generation", e);
+    }
+    this.payslipTemplateRepository = payslipTemplateRepository;
+    this.fileStorageService = fileStorageService;
+    this.employeeBankAccountRepository = employeeBankAccountRepository;
+    this.pdfEosSettlement = pdfEosSettlement;
+  }
+
+  public byte[] generatePayslipPdf(PayslipPdfData pdfData) {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    CompanyInfo companyInfo = pdfData.getCompanyInfo();
+    if (companyInfo == null || companyInfo.getTenant() == null) {
+      throw new IllegalStateException("Company Info or Tenant not found for this payslip.");
     }
 
-    public byte[] generatePayslipPdf(PayslipPdfData pdfData) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        CompanyInfo companyInfo = pdfData.getCompanyInfo();
-        if (companyInfo == null || companyInfo.getTenant() == null) {
-            throw new IllegalStateException("Company Info or Tenant not found for this payslip.");
-        }
+    Optional<PayslipTemplate> templateOpt = payslipTemplateRepository
+        .findByTenantIdAndIsDefaultTrue(companyInfo.getTenant().getId());
 
-        Optional<PayslipTemplate> templateOpt = payslipTemplateRepository.findByTenantIdAndIsDefaultTrue(companyInfo.getTenant().getId());
-
-        String htmlContent;
-        if (templateOpt.isPresent()) {
-            // 2. Populate the custom HTML template with data
-            htmlContent = populateHtmlTemplate(templateOpt.get().getTemplateContent(), pdfData);
-        } else {
-            // 3. Fallback to a default, hardcoded HTML template if none is found
-            htmlContent = populateHtmlTemplate(getFallbackTemplate(), pdfData);
-        }
-
-        try (PdfWriter writer = new PdfWriter(baos);
-             PdfDocument pdf = new PdfDocument(writer);
-             Document document = new Document(pdf, PageSize.A4)) {
-
-            // 4. Configure iText for HTML to PDF conversion
-            ConverterProperties properties = new ConverterProperties();
-            FontProvider fontProvider = new DefaultFontProvider(false, false, false);
-            if (regularFont != null) {
-                fontProvider.addFont(regularFont.getFontProgram());
-            }
-            if (boldFont != null) {
-                fontProvider.addFont(boldFont.getFontProgram());
-            }
-            properties.setFontProvider(fontProvider);
-
-            // 5. Convert the final HTML to PDF
-            HtmlConverter.convertToPdf(htmlContent, pdf, properties);
-
-        } catch (Exception e) {
-            throw new RuntimeException("Error generating PDF", e);
-        }
-        return baos.toByteArray();
+    String htmlContent;
+    if (templateOpt.isPresent()) {
+      // 2. Populate the custom HTML template with data
+      htmlContent = populateHtmlTemplate(templateOpt.get().getTemplateContent(), pdfData);
+    } else {
+      // 3. Fallback to a default, hardcoded HTML template if none is found
+      htmlContent = populateHtmlTemplate(getFallbackTemplate(), pdfData);
     }
 
-    private String populateHtmlTemplate(String template, PayslipPdfData data) {
-        Payslip payslip = data.getPayslip();
-        if (payslip == null || payslip.getPayDate() == null) {
-            throw new IllegalArgumentException("Cannot generate PDF. The payslip data or its pay date is missing.");
-        }
+    try (PdfWriter writer = new PdfWriter(baos);
+        PdfDocument pdf = new PdfDocument(writer);
+        Document document = new Document(pdf, PageSize.A4)) {
 
-        String monthName = payslip.getPayDate().getMonth().getDisplayName(java.time.format.TextStyle.FULL, Locale.ENGLISH);
+      // 4. Configure iText for HTML to PDF conversion
+      ConverterProperties properties = new ConverterProperties();
+      FontProvider fontProvider = new DefaultFontProvider(false, false, false);
+      if (regularFont != null) {
+        fontProvider.addFont(regularFont.getFontProgram());
+      }
+      if (boldFont != null) {
+        fontProvider.addFont(boldFont.getFontProgram());
+      }
+      properties.setFontProvider(fontProvider);
 
-        // --- Handle Company Logo ---
-        String logoImgTag = ""; // Default to empty string if no logo
-        CompanyInfo companyInfo = data.getCompanyInfo(); // Keep this for local use
-        if (companyInfo != null && companyInfo.getLogoUrl() != null && !companyInfo.getLogoUrl().isEmpty()) {
-            try {
-                Resource logoResource = fileStorageService.loadFileAsResource(companyInfo.getLogoUrl());
-                byte[] logoBytes = logoResource.getInputStream().readAllBytes();
-                String base64Logo = Base64.getEncoder().encodeToString(logoBytes);
-                String mimeType = logoResource.getURL().openConnection().getContentType();
-                logoImgTag = String.format("<img src='data:%s;base64,%s' style='max-height: 60px; max-width: 180px;' />", mimeType, base64Logo);
-            } catch (IOException e) {
-                System.err.println("Could not load or encode company logo: " + e.getMessage());
-            }
-        }
-        template = template.replace("{{company.logo}}", logoImgTag);
+      // 5. Convert the final HTML to PDF
+      HtmlConverter.convertToPdf(htmlContent, pdf, properties);
 
-        // Basic Info
-        String companyAddress = companyInfo != null ? (companyInfo.getAddress() != null ? companyInfo.getAddress() : "") : "N/A";
-        String companyContact = companyInfo != null ? (companyInfo.getPhone() != null ? companyInfo.getPhone() : "") : "N/A";
-        template = template.replace("{{company.address}}", companyAddress);
-        template = template.replace("{{company.contact}}", companyContact);
-        template = template.replace("{{company.name}}", companyInfo != null ? companyInfo.getCompanyName() : "N/A");
-        template = template.replace("{{payslip.monthYear}}", monthName + " " + payslip.getYear());
-        template = template.replace("{{employee.name}}", data.getEmployeeFullName());
-        template = template.replace("{{employee.code}}", payslip.getEmployee() != null ? payslip.getEmployee().getEmployeeCode() : "N/A");
-        template = template.replace("{{payslip.payDate}}", payslip.getPayDate().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
+    } catch (Exception e) {
+      throw new RuntimeException("Error generating PDF", e);
+    }
+    return baos.toByteArray();
+  }
 
-        // --- Add more Job Details ---
-        String designation = "N/A";
-        String joiningDate = "N/A";
-        String department = "N/A";
-        String contractType = "N/A";
-        if (data.getJobDetails() != null) {
-            designation = data.getJobDetails().getDesignation() != null ? data.getJobDetails().getDesignation() : "N/A";
-            joiningDate = data.getJobDetails().getDateOfJoining() != null ? data.getJobDetails().getDateOfJoining().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")) : "N/A";
-            department = data.getJobDetails().getDepartment() != null ? data.getJobDetails().getDepartment() : "N/A";
-            contractType = data.getJobDetails().getContractType() != null ? String.valueOf(data.getJobDetails().getContractType()) : "N/A";
-        }
-        template = template.replace("{{employee.designation}}", designation);
-        template = template.replace("{{employee.joiningDate}}", joiningDate);
-        template = template.replace("{{employee.department}}", department);
-        template = template.replace("{{employee.contractType}}", contractType);
-
-        // Attendance
-        template = template.replace("{{payslip.totalDays}}", payslip.getTotalDaysInMonth() != null ? String.valueOf(payslip.getTotalDaysInMonth()) : "0");
-        template = template.replace("{{payslip.payableDays}}", payslip.getPayableDays() != null ? payslip.getPayableDays().toPlainString() : "0.0");
-        template = template.replace("{{payslip.lopDays}}", payslip.getLossOfPayDays() != null ? payslip.getLossOfPayDays().toPlainString() : "0.0");
-
-        // Earnings & Deductions
-        template = template.replace("{{payslip.earnings}}", buildComponentTable(payslip, SalaryComponentType.EARNING));
-        template = template.replace("{{payslip.deductions}}", buildComponentTable(payslip, SalaryComponentType.DEDUCTION));
-        template = template.replace("{{payslip.grossEarnings}}", formatCurrency(payslip.getGrossEarnings()));
-        template = template.replace("{{payslip.totalDeductions}}", formatCurrency(payslip.getTotalDeductions()));
-
-        // Net Pay
-        template = template.replace("{{payslip.netSalary}}", formatCurrency(payslip.getNetSalary()));
-        // A proper amount-to-words conversion is complex. This is a placeholder.
-        template = template.replace("{{payslip.netSalaryInWords}}", "Amount in words placeholder");
-
-        // --- Bank Details ---
-        Optional<EmployeeBankAccount> bankAccountOpt = Optional.empty();
-        if (payslip.getEmployee() != null) {
-            bankAccountOpt = employeeBankAccountRepository.findByEmployeeId(payslip.getEmployee().getId());
-        } else {
-            System.err.println("Warning: Employee object is null for payslip ID: " + payslip.getId());
-        }
-        template = template.replace("{{employee.bankName}}", bankAccountOpt.map(EmployeeBankAccount::getBankName).orElse("N/A"));
-        template = template.replace("{{employee.bankAccount}}", bankAccountOpt.map(EmployeeBankAccount::getAccountNumber).orElse("N/A"));
-        template = template.replace("{{employee.ifscCode}}", bankAccountOpt.map(EmployeeBankAccount::getIfscCode).orElse("N/A"));
-
-        // --- Footer Details ---
-        template = template.replace("{{payslip.id}}", String.valueOf(payslip.getId()));
-        template = template.replace("{{payslip.generatedOn}}", LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")));
-
-        return template;
+  private String populateHtmlTemplate(String template, PayslipPdfData data) {
+    Payslip payslip = data.getPayslip();
+    if (payslip == null || payslip.getPayDate() == null) {
+      throw new IllegalArgumentException("Cannot generate PDF. The payslip data or its pay date is missing.");
     }
 
-    private String buildComponentTable(Payslip payslip, SalaryComponentType type) {
-        StringBuilder sb = new StringBuilder();
-        List<PayslipComponent> components = payslip.getComponents().stream()
-                .filter(c -> c.getSalaryComponent().getType() == type)
-                .collect(Collectors.toList());
+    String monthName = payslip.getPayDate().getMonth().getDisplayName(java.time.format.TextStyle.FULL, Locale.ENGLISH);
 
-        for (PayslipComponent pc : components) {
-            sb.append("<tr>");
-            sb.append("<td>").append(pc.getSalaryComponent().getName()).append("</td>");
-            sb.append("<td class='amount'>").append(formatCurrency(pc.getAmount())).append("</td>");
-            sb.append("</tr>");
-        }
-        return sb.toString();
+    // --- Handle Company Logo ---
+    String logoImgTag = ""; // Default to empty string if no logo
+    CompanyInfo companyInfo = data.getCompanyInfo(); // Keep this for local use
+    if (companyInfo != null && companyInfo.getLogoUrl() != null && !companyInfo.getLogoUrl().isEmpty()) {
+      try {
+        Resource logoResource = fileStorageService.loadFileAsResource(companyInfo.getLogoUrl());
+        byte[] logoBytes = logoResource.getInputStream().readAllBytes();
+        String base64Logo = Base64.getEncoder().encodeToString(logoBytes);
+        String mimeType = logoResource.getURL().openConnection().getContentType();
+        logoImgTag = String.format("<img src='data:%s;base64,%s' style='max-height: 60px; max-width: 180px;' />",
+            mimeType, base64Logo);
+      } catch (IOException e) {
+        System.err.println("Could not load or encode company logo: " + e.getMessage());
+      }
     }
+    template = template.replace("{{company.logo}}", logoImgTag);
 
-    private String getFallbackTemplate() {
-        // This is a basic, table-based HTML template. Your frontend designer can create much better ones.
-        return """
+    // Basic Info
+    String companyAddress = companyInfo != null ? (companyInfo.getAddress() != null ? companyInfo.getAddress() : "")
+        : "N/A";
+    String companyContact = companyInfo != null ? (companyInfo.getPhone() != null ? companyInfo.getPhone() : "")
+        : "N/A";
+    template = template.replace("{{company.address}}", companyAddress);
+    template = template.replace("{{company.contact}}", companyContact);
+    template = template.replace("{{company.name}}", companyInfo != null ? companyInfo.getCompanyName() : "N/A");
+    template = template.replace("{{payslip.monthYear}}", monthName + " " + payslip.getYear());
+    template = template.replace("{{employee.name}}", data.getEmployeeFullName());
+    template = template.replace("{{employee.code}}",
+        payslip.getEmployee() != null ? payslip.getEmployee().getEmployeeCode() : "N/A");
+    template = template.replace("{{payslip.payDate}}",
+        payslip.getPayDate().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
+
+    // --- Add more Job Details ---
+    String designation = "N/A";
+    String joiningDate = "N/A";
+    String department = "N/A";
+    String contractType = "N/A";
+    if (data.getJobDetails() != null) {
+      designation = data.getJobDetails().getDesignation() != null ? data.getJobDetails().getDesignation() : "N/A";
+      joiningDate = data.getJobDetails().getDateOfJoining() != null
+          ? data.getJobDetails().getDateOfJoining().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"))
+          : "N/A";
+      department = data.getJobDetails().getDepartment() != null ? data.getJobDetails().getDepartment() : "N/A";
+      contractType = data.getJobDetails().getContractType() != null
+          ? String.valueOf(data.getJobDetails().getContractType())
+          : "N/A";
+    }
+    template = template.replace("{{employee.designation}}", designation);
+    template = template.replace("{{employee.joiningDate}}", joiningDate);
+    template = template.replace("{{employee.department}}", department);
+    template = template.replace("{{employee.contractType}}", contractType);
+
+    // Attendance
+    template = template.replace("{{payslip.totalDays}}",
+        payslip.getTotalDaysInMonth() != null ? String.valueOf(payslip.getTotalDaysInMonth()) : "0");
+    template = template.replace("{{payslip.payableDays}}",
+        payslip.getPayableDays() != null ? payslip.getPayableDays().toPlainString() : "0.0");
+    template = template.replace("{{payslip.lopDays}}",
+        payslip.getLossOfPayDays() != null ? payslip.getLossOfPayDays().toPlainString() : "0.0");
+
+    // Earnings & Deductions
+    template = template.replace("{{payslip.earnings}}", buildComponentTable(payslip, SalaryComponentType.EARNING));
+    template = template.replace("{{payslip.deductions}}", buildComponentTable(payslip, SalaryComponentType.DEDUCTION));
+    template = template.replace("{{payslip.grossEarnings}}", formatCurrency(payslip.getGrossEarnings()));
+    template = template.replace("{{payslip.totalDeductions}}", formatCurrency(payslip.getTotalDeductions()));
+
+    // Net Pay
+    template = template.replace("{{payslip.netSalary}}", formatCurrency(payslip.getNetSalary()));
+    // A proper amount-to-words conversion is complex. This is a placeholder.
+    template = template.replace("{{payslip.netSalaryInWords}}", "Amount in words placeholder");
+
+    // --- Bank Details ---
+    Optional<EmployeeBankAccount> bankAccountOpt = Optional.empty();
+    if (payslip.getEmployee() != null) {
+      bankAccountOpt = employeeBankAccountRepository.findByEmployeeId(payslip.getEmployee().getId());
+    } else {
+      System.err.println("Warning: Employee object is null for payslip ID: " + payslip.getId());
+    }
+    template = template.replace("{{employee.bankName}}",
+        bankAccountOpt.map(EmployeeBankAccount::getBankName).orElse("N/A"));
+    template = template.replace("{{employee.bankAccount}}",
+        bankAccountOpt.map(EmployeeBankAccount::getAccountNumber).orElse("N/A"));
+    template = template.replace("{{employee.ifscCode}}",
+        bankAccountOpt.map(EmployeeBankAccount::getIfscCode).orElse("N/A"));
+
+    // --- Footer Details ---
+    template = template.replace("{{payslip.id}}", String.valueOf(payslip.getId()));
+    template = template.replace("{{payslip.generatedOn}}",
+        LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")));
+
+    return template;
+  }
+
+  private String buildComponentTable(Payslip payslip, SalaryComponentType type) {
+    StringBuilder sb = new StringBuilder();
+    List<PayslipComponent> components = payslip.getComponents().stream()
+        .filter(c -> c.getSalaryComponent().getType() == type)
+        .collect(Collectors.toList());
+
+    for (PayslipComponent pc : components) {
+      sb.append("<tr>");
+      sb.append("<td>").append(pc.getSalaryComponent().getName()).append("</td>");
+      sb.append("<td class='amount'>").append(formatCurrency(pc.getAmount())).append("</td>");
+      sb.append("</tr>");
+    }
+    return sb.toString();
+  }
+
+  private String getFallbackTemplate() {
+    // This is a basic, table-based HTML template. Your frontend designer can create
+    // much better ones.
+    return """
                  <!doctype html>
                  <html lang="en">
                  <head>
@@ -348,14 +372,14 @@ public class PdfGenerationService {
                  </body>
                  </html>
         """;
-    }
+  }
 
-    public byte[] generateFinalSettlementPdf(FinalSettlementPdfData pdfData) {
-        // Delegate the generation to the dedicated service
-        return pdfEosSettlement.generate(pdfData);
-    }
+  public byte[] generateFinalSettlementPdf(FinalSettlementPdfData pdfData) {
+    // Delegate the generation to the dedicated service
+    return pdfEosSettlement.generate(pdfData);
+  }
 
-    private String formatCurrency(BigDecimal amount) {
-        return amount != null ? String.format("%,.2f", amount) : "0.00";
-    }
+  private String formatCurrency(BigDecimal amount) {
+    return amount != null ? String.format("%,.2f", amount) : "0.00";
+  }
 }

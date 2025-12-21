@@ -6,6 +6,7 @@ import com.example.multi_tanent.production.repository.ProCategoryRepository;
 import com.example.multi_tanent.production.repository.ProSubCategoryRepository;
 import com.example.multi_tanent.sales.dto.*;
 import com.example.multi_tanent.sales.entity.ProformaInvoice;
+import com.example.multi_tanent.sales.enums.SalesStatus;
 import com.example.multi_tanent.sales.entity.ProformaInvoiceItem;
 import com.example.multi_tanent.sales.repository.ProformaInvoiceRepository;
 import com.example.multi_tanent.spersusers.enitity.BaseCustomer;
@@ -155,6 +156,34 @@ public class ProformaInvoiceService {
                 .orElseThrow(() -> new EntityNotFoundException("Proforma Invoice not found"));
         proformaInvoiceRepository.delete(invoice);
     }
+
+    @Transactional
+    public ProformaInvoiceResponse updateStatus(Long id, SalesStatus status) {
+        String tenantIdentifier = TenantContext.getTenantId();
+        Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+
+        ProformaInvoice invoice = proformaInvoiceRepository.findByIdAndTenantId(id, tenant.getId())
+                .orElseThrow(() -> new EntityNotFoundException("Proforma Invoice not found"));
+
+        invoice.setStatus(status);
+        ProformaInvoice updatedInvoice = proformaInvoiceRepository.save(invoice);
+        return mapEntityToResponse(updatedInvoice);
+    }
+
+    // @Transactional
+    // public ProformaInvoiceResponse updateStatusByNumber(String invoiceNumber, SalesStatus status) {
+    //     String tenantIdentifier = TenantContext.getTenantId();
+    //     Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)
+    //             .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+
+    //     ProformaInvoice invoice = proformaInvoiceRepository.findByInvoiceNumberAndTenantId(invoiceNumber, tenant.getId())
+    //             .orElseThrow(() -> new EntityNotFoundException("Proforma Invoice not found with number: " + invoiceNumber));
+
+    //     invoice.setStatus(status);
+    //     ProformaInvoice updatedInvoice = proformaInvoiceRepository.save(invoice);
+    //     return mapEntityToResponse(updatedInvoice);
+    // }
 
     private void mapRequestToEntity(ProformaInvoiceRequest request, ProformaInvoice invoice, Long tenantId) {
         if (request.getInvoiceLedger() != null)

@@ -1,10 +1,10 @@
 package com.example.multi_tanent.tenant.payroll.service;
 
 import com.example.multi_tanent.config.TenantContext;
+import com.example.multi_tanent.spersusers.enitity.CompanyInfo;
 import com.example.multi_tanent.spersusers.enitity.Employee;
 import com.example.multi_tanent.spersusers.enitity.Tenant;
 import com.example.multi_tanent.spersusers.repository.TenantRepository;
-import com.example.multi_tanent.tenant.base.entity.CompanyInfo;
 import com.example.multi_tanent.tenant.employee.entity.JobDetails;
 import com.example.multi_tanent.tenant.employee.repository.JobDetailsRepository;
 import com.example.multi_tanent.tenant.employee.repository.EmployeeRepository;
@@ -40,12 +40,12 @@ public class EndOfServiceCalculationService {
     private final TenantRepository tenantRepository;
 
     public EndOfServiceCalculationService(EmployeeRepository employeeRepository,
-                                          SalaryStructureRepository salaryStructureRepository,
-                                          JobDetailsRepository jobDetailsRepository,
-                                          EndOfServiceRepository endOfServiceRepository,
-                                          EmployeeBenefitProvisionService provisionService,
-                                          CompanyInfoService companyInfoService,
-                                          TenantRepository tenantRepository) {
+            SalaryStructureRepository salaryStructureRepository,
+            JobDetailsRepository jobDetailsRepository,
+            EndOfServiceRepository endOfServiceRepository,
+            EmployeeBenefitProvisionService provisionService,
+            CompanyInfoService companyInfoService,
+            TenantRepository tenantRepository) {
         this.employeeRepository = employeeRepository;
         this.salaryStructureRepository = salaryStructureRepository;
         this.jobDetailsRepository = jobDetailsRepository;
@@ -64,7 +64,8 @@ public class EndOfServiceCalculationService {
      * @param reason         The reason for the employee's departure.
      * @return The saved EndOfService entity.
      */
-    public EndOfService calculateAndSaveGratuity(String employeeCode, LocalDate lastWorkingDay, TerminationReason reason) {
+    public EndOfService calculateAndSaveGratuity(String employeeCode, LocalDate lastWorkingDay,
+            TerminationReason reason) {
         Employee employee = employeeRepository.findByEmployeeCode(employeeCode)
                 .orElseThrow(() -> new EntityNotFoundException("Employee not found: " + employeeCode));
 
@@ -83,7 +84,8 @@ public class EndOfServiceCalculationService {
         // If terminated for gross misconduct, the employee is not entitled to gratuity.
         if (reason == TerminationReason.TERMINATION_FOR_CAUSE) {
             long daysOfService = ChronoUnit.DAYS.between(joiningDate, lastWorkingDay);
-            BigDecimal yearsOfService = BigDecimal.valueOf(daysOfService).divide(BigDecimal.valueOf(365), 4, RoundingMode.HALF_UP);
+            BigDecimal yearsOfService = BigDecimal.valueOf(daysOfService).divide(BigDecimal.valueOf(365), 4,
+                    RoundingMode.HALF_UP);
 
             EndOfService eos = endOfServiceRepository.findByEmployeeId(employee.getId()).orElse(new EndOfService());
             eos.setEmployee(employee);
@@ -92,7 +94,8 @@ public class EndOfServiceCalculationService {
             eos.setTotalYearsOfService(yearsOfService); // Record years for auditing
             eos.setLastBasicSalary(BigDecimal.ZERO); // Not applicable
             eos.setGratuityAmount(BigDecimal.ZERO);
-            eos.setCalculationDetails("Not entitled to gratuity due to termination for cause (as per UAE Labour Law Art. 44/120).");
+            eos.setCalculationDetails(
+                    "Not entitled to gratuity due to termination for cause (as per UAE Labour Law Art. 44/120).");
             eos.setCalculatedAt(LocalDateTime.now());
             return endOfServiceRepository.save(eos);
         }
@@ -103,7 +106,8 @@ public class EndOfServiceCalculationService {
         }
 
         long daysOfService = ChronoUnit.DAYS.between(joiningDate, lastWorkingDay);
-        BigDecimal yearsOfService = BigDecimal.valueOf(daysOfService).divide(BigDecimal.valueOf(365), 4, RoundingMode.HALF_UP);
+        BigDecimal yearsOfService = BigDecimal.valueOf(daysOfService).divide(BigDecimal.valueOf(365), 4,
+                RoundingMode.HALF_UP);
 
         if (yearsOfService.compareTo(BigDecimal.ONE) < 0) {
             // No gratuity for less than 1 year of service
@@ -111,7 +115,8 @@ public class EndOfServiceCalculationService {
         }
 
         SalaryStructure structure = salaryStructureRepository.findByEmployeeId(employee.getId())
-                .orElseThrow(() -> new IllegalStateException("Salary structure not found for employee: " + employeeCode));
+                .orElseThrow(
+                        () -> new IllegalStateException("Salary structure not found for employee: " + employeeCode));
 
         BigDecimal lastBasicSalary = structure.getComponents().stream()
                 .filter(c -> "BASIC".equalsIgnoreCase(c.getSalaryComponent().getCode()))
@@ -129,21 +134,27 @@ public class EndOfServiceCalculationService {
             details = String.format("%.2f years * 21 days * AED %.2f (daily basic)", yearsOfService, dailyBasic);
         } else {
             // 21 days for first 5 years + 30 days for each additional year
-            BigDecimal firstFiveYearsGratuity = dailyBasic.multiply(BigDecimal.valueOf(21)).multiply(BigDecimal.valueOf(5));
+            BigDecimal firstFiveYearsGratuity = dailyBasic.multiply(BigDecimal.valueOf(21))
+                    .multiply(BigDecimal.valueOf(5));
             BigDecimal remainingYears = yearsOfService.subtract(BigDecimal.valueOf(5));
             BigDecimal remainingYearsGratuity = dailyBasic.multiply(BigDecimal.valueOf(30)).multiply(remainingYears);
             gratuityAmount = firstFiveYearsGratuity.add(remainingYearsGratuity);
-            details = String.format("(5 years * 21 days) + (%.2f years * 30 days) * AED %.2f (daily basic)", remainingYears, dailyBasic);
+            details = String.format("(5 years * 21 days) + (%.2f years * 30 days) * AED %.2f (daily basic)",
+                    remainingYears, dailyBasic);
         }
 
-        // --- Apply Reductions based on Contract Type and Resignation (Historical Rule) ---
-        // Note: The new UAE labor law has largely removed these reductions. This is for demonstration.
+        // --- Apply Reductions based on Contract Type and Resignation (Historical Rule)
+        // ---
+        // Note: The new UAE labor law has largely removed these reductions. This is for
+        // demonstration.
         if (contractType == ContractType.UNLIMITED && reason == TerminationReason.RESIGNATION) {
             if (yearsOfService.compareTo(BigDecimal.valueOf(3)) < 0) { // 1 to 3 years
-                gratuityAmount = gratuityAmount.multiply(BigDecimal.ONE.divide(BigDecimal.valueOf(3), 4, RoundingMode.HALF_UP));
+                gratuityAmount = gratuityAmount
+                        .multiply(BigDecimal.ONE.divide(BigDecimal.valueOf(3), 4, RoundingMode.HALF_UP));
                 details += " (Reduced to 1/3 for resignation under 3 years)";
             } else if (yearsOfService.compareTo(BigDecimal.valueOf(5)) < 0) { // 3 to 5 years
-                gratuityAmount = gratuityAmount.multiply(BigDecimal.valueOf(2).divide(BigDecimal.valueOf(3), 4, RoundingMode.HALF_UP));
+                gratuityAmount = gratuityAmount
+                        .multiply(BigDecimal.valueOf(2).divide(BigDecimal.valueOf(3), 4, RoundingMode.HALF_UP));
                 details += " (Reduced to 2/3 for resignation between 3-5 years)";
             }
             // No reduction for resignation after 5 years.
@@ -152,7 +163,8 @@ public class EndOfServiceCalculationService {
         // --- Apply Gratuity Cap as per UAE Law ---
         // The cap is based on two years' total salary.
         BigDecimal lastGrossSalary = structure.getComponents().stream()
-                .filter(c -> c.getSalaryComponent().getType() == SalaryComponentType.EARNING && c.getSalaryComponent().isPartOfGrossSalary())
+                .filter(c -> c.getSalaryComponent().getType() == SalaryComponentType.EARNING
+                        && c.getSalaryComponent().isPartOfGrossSalary())
                 .map(c -> c.getValue() != null ? c.getValue() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -163,8 +175,10 @@ public class EndOfServiceCalculationService {
             details += " (Capped at 2 years' salary: AED " + twoYearsSalaryCap.setScale(2, RoundingMode.HALF_UP) + ")";
         }
 
-        // This is a simplified calculation. UAE law has caps (e.g., total gratuity not exceeding 2 years' salary)
-        // and reductions based on resignation circumstances, which should be added here.
+        // This is a simplified calculation. UAE law has caps (e.g., total gratuity not
+        // exceeding 2 years' salary)
+        // and reductions based on resignation circumstances, which should be added
+        // here.
 
         EndOfService eos = endOfServiceRepository.findByEmployeeId(employee.getId()).orElse(new EndOfService());
         eos.setEmployee(employee);
@@ -192,7 +206,8 @@ public class EndOfServiceCalculationService {
 
             CompanyInfo companyInfo = companyInfoService.getCompanyInfo();
             Tenant tenant = tenantRepository.findByTenantId(TenantContext.getTenantId())
-                    .orElseThrow(() -> new IllegalStateException("Tenant not found for context: " + TenantContext.getTenantId()));
+                    .orElseThrow(() -> new IllegalStateException(
+                            "Tenant not found for context: " + TenantContext.getTenantId()));
             JobDetails jobDetails = jobDetailsRepository.findByEmployeeId(employeeId)
                     .orElse(new JobDetails());
 

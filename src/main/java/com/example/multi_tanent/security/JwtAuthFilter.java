@@ -18,7 +18,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
   private final JwtUtil jwt;
   private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
 
-  public JwtAuthFilter(JwtUtil jwt) { this.jwt = jwt; }
+  public JwtAuthFilter(JwtUtil jwt) {
+    this.jwt = jwt;
+  }
 
   @Override
   protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
@@ -37,7 +39,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         // Add detailed logging to help debug authorization issues
         log.info("JWT Auth: User='{}', Tenant='{}', Roles='{}' for request URI='{}'",
-                username, tenantId, roles, req.getRequestURI());
+            username, tenantId, roles, req.getRequestURI());
 
         // Set tenant for this request thread
         TenantContext.setTenantId(tenantId);
@@ -49,11 +51,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
       }
       chain.doFilter(req, res);
     } catch (Exception e) {
-      // Catching a broader exception to handle parsing errors and others gracefully.
-      log.warn("JWT Authentication error for request URI='{}': {}", req.getRequestURI(), e.getMessage());
+      log.error("Cannot set user authentication: {}", e.getMessage());
       SecurityContextHolder.clearContext();
-      res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authentication Error: " + e.getMessage());
-      return; // Stop the filter chain
+      // Continue filter chain even if auth fails, to allow permitAll endpoints to
+      // work
+      chain.doFilter(req, res);
     } finally {
       // Crucially, clear the tenant context to prevent leaks in the thread pool.
       TenantContext.clear();

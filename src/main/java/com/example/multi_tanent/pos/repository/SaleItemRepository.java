@@ -7,5 +7,8 @@ import java.util.Optional;
 
 public interface SaleItemRepository extends JpaRepository<SaleItem, Long> {
     Optional<SaleItem> findByIdAndSaleId(Long itemId, Long saleId);
+
     boolean existsByProductVariantId(Long productVariantId);
+
+    java.util.List<SaleItem> findByProductVariantId(Long productVariantId);
 }

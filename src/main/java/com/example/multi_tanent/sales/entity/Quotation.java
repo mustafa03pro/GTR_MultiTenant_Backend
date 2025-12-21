@@ -96,6 +96,7 @@ public class Quotation {
     private String template;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 50)
     private SalesStatus status;
 
     @Column(name = "created_by")

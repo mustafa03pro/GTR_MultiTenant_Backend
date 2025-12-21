@@ -41,6 +41,7 @@ public class MultiTenantDataSourceConfig {
   // }
 
   @Bean(name = "tenantEmf")
+  @Primary
   public LocalContainerEntityManagerFactoryBean tenantEmf(
       @Qualifier("tenantRoutingDataSource") DataSource ds) {
     var emf = new LocalContainerEntityManagerFactoryBean();

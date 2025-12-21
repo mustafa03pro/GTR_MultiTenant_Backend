@@ -1,6 +1,6 @@
 package com.example.multi_tanent.tenant.payroll.dto;
 
-import com.example.multi_tanent.tenant.base.entity.CompanyLocation;
+import com.example.multi_tanent.spersusers.enitity.CompanyLocation;
 
 import lombok.Data;
 
@@ -16,7 +16,8 @@ public class CompanyLocationResponse {
     private boolean isPrimary;
 
     public static CompanyLocationResponse fromEntity(CompanyLocation location) {
-        if (location == null) return null;
+        if (location == null)
+            return null;
         CompanyLocationResponse dto = new CompanyLocationResponse();
         dto.setId(location.getId());
         dto.setLocationName(location.getLocationName());

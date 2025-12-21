@@ -98,6 +98,7 @@ public class SalesOrder {
     private String emailTo;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 50)
     private SalesStatus status;
 
     @Column(name = "created_by")

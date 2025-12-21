@@ -56,6 +56,7 @@ public class SecurityConfig {
             .requestMatchers("/api/master/tenant-requests/register").permitAll()
             .requestMatchers("/api/biometric-punch/**").permitAll()
             .requestMatchers("/public/products/**").permitAll()
+            .requestMatchers("/api/pos/uploads/view/**").permitAll()
 
             // Master Admin Endpoints
             .requestMatchers("/api/master/tenant-requests/**").authenticated()
@@ -100,11 +101,19 @@ public class SecurityConfig {
             .requestMatchers("/api/contacts/**").authenticated()
 
             // Sales Module Endpoints
+            .requestMatchers("/api/sales/rental-quotations", "/api/sales/rental-quotations/**",
+                "/api/sales/rental-quotations/status-by-number", "/api/sales/rental-quotations/status/by-number")
+            .permitAll()
+            .requestMatchers("/api/sales/quotations/status-by-number", "/api/sales/quotations/status/by-number")
+            .permitAll()
             .requestMatchers("/api/sales/**").authenticated()
             .requestMatchers("/api/sales/attachments/quotations/**").permitAll()
             .requestMatchers("/api/sales/attachments/rental_quotations/**").permitAll()
             .requestMatchers("/api/sales/attachments/rental-quotations/**").permitAll()
             .requestMatchers("/api/sales/attachments/view").permitAll()
+             //purchase
+             .requestMatchers("/api/purchase/**", "/api/purchases/**").hasAnyRole("SUPER_ADMIN", "PURCHASE_ADMIN")
+
 
             .anyRequest().authenticated() // Secure all other API endpoints by default
         )
@@ -136,10 +145,10 @@ public class SecurityConfig {
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration config = new CorsConfiguration();
     config.setAllowedOrigins(
-        java.util.List.of("http://localhost:5173", "https://javapaas-202946-0.cloudclusters.net",
+        java.util.List.of("http://localhost:5173", "https://thegtrgroup.com",
             "http://localhost:8080")); // React
     // app URL
-    config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+    config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
     config.setAllowedHeaders(java.util.List.of("*"));
     config.setAllowCredentials(true); // If using cookies or auth headers
 

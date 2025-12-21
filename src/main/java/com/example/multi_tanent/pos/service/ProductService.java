@@ -49,16 +49,16 @@ public class ProductService {
     private final StockMovementRepository stockMovementRepository;
 
     public ProductService(ProductRepository productRepository,
-                          TenantRepository tenantRepository,
-                          TaxRateRepository taxRateRepository,
-                          ProductVariantService productVariantService,
-                          SaleItemRepository saleItemRepository,
-                          CategoryRepository categoryRepository,
-                          ObjectMapper objectMapper,
-                          StoreRepository storeRepository,
-                          StockMovementService stockMovementService,
-                          InventoryRepository inventoryRepository,
-                          StockMovementRepository stockMovementRepository) {
+            TenantRepository tenantRepository,
+            TaxRateRepository taxRateRepository,
+            ProductVariantService productVariantService,
+            SaleItemRepository saleItemRepository,
+            CategoryRepository categoryRepository,
+            ObjectMapper objectMapper,
+            StoreRepository storeRepository,
+            StockMovementService stockMovementService,
+            InventoryRepository inventoryRepository,
+            StockMovementRepository stockMovementRepository) {
         this.productRepository = productRepository;
         this.tenantRepository = tenantRepository;
         this.taxRateRepository = taxRateRepository;
@@ -74,7 +74,8 @@ public class ProductService {
 
     private Tenant getCurrentTenant() {
         return tenantRepository.findFirstByOrderByIdAsc()
-                .orElseThrow(() -> new IllegalStateException("Tenant context not found. Cannot perform product operations."));
+                .orElseThrow(() -> new IllegalStateException(
+                        "Tenant context not found. Cannot perform product operations."));
     }
 
     public Product createProduct(ProductRequest request) {
@@ -101,6 +102,19 @@ public class ProductService {
         }
 
         Product savedProduct = productRepository.save(product);
+
+        // Generate barcode images for all variants
+        if (savedProduct.getVariants() != null) {
+            System.out.println(
+                    "DEBUG: Generating barcode images for " + savedProduct.getVariants().size() + " variants.");
+            for (ProductVariant variant : savedProduct.getVariants()) {
+                System.out.println("DEBUG: Generating barcode for variant SKU: " + variant.getSku());
+                productVariantService.generateAndSetBarcodeUrl(variant);
+            }
+        } else {
+            System.out.println("DEBUG: No variants found for product: " + savedProduct.getName());
+        }
+
         return savedProduct;
     }
 
@@ -128,7 +142,8 @@ public class ProductService {
 
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
-                if (isRowEmpty(row)) continue;
+                if (isRowEmpty(row))
+                    continue;
 
                 try {
                     String productName = formatter.formatCellValue(row.getCell(0)).trim();
@@ -159,8 +174,10 @@ public class ProductService {
 
                     // Validate Image URL format to prevent local paths.
                     // The server cannot access local file paths from your computer.
-                    if (imageUrl != null && !imageUrl.isBlank() && (imageUrl.startsWith("/") || imageUrl.matches("^[a-zA-Z]:\\\\.*"))) {
-                        errors.add("Row " + (i + 1) + ": Invalid Image URL. Local paths like '" + imageUrl + "' are not allowed. Please upload images to the server first to get a valid URL, then use that URL in the Excel file.");
+                    if (imageUrl != null && !imageUrl.isBlank()
+                            && (imageUrl.startsWith("/") || imageUrl.matches("^[a-zA-Z]:\\\\.*"))) {
+                        errors.add("Row " + (i + 1) + ": Invalid Image URL. Local paths like '" + imageUrl
+                                + "' are not allowed. Please upload images to the server first to get a valid URL, then use that URL in the Excel file.");
                         continue;
                     }
 
@@ -183,20 +200,30 @@ public class ProductService {
                     });
 
                     // Check for duplicate SKU within the file
-                    boolean skuExistsInFile = product.getVariants().stream().anyMatch(v -> v.getSku().equalsIgnoreCase(variantSku));
+                    boolean skuExistsInFile = product.getVariants().stream()
+                            .anyMatch(v -> v.getSku().equalsIgnoreCase(variantSku));
                     if (skuExistsInFile) {
-                        throw new IllegalArgumentException("Duplicate Variant SKU '" + variantSku + "' found in the file for product '" + productName + "'.");
+                        throw new IllegalArgumentException("Duplicate Variant SKU '" + variantSku
+                                + "' found in the file for product '" + productName + "'.");
                     }
 
                     // Check for duplicate SKU in the database
                     if (productRepository.existsByVariantSku(variantSku, currentTenant.getId())) {
-                        throw new IllegalArgumentException("Variant SKU '" + variantSku + "' already exists in the database.");
+                        throw new IllegalArgumentException(
+                                "Variant SKU '" + variantSku + "' already exists in the database.");
                     }
 
                     ProductVariant variant = new ProductVariant();
                     variant.setProduct(product);
                     variant.setSku(variantSku);
-                    variant.setBarcode(variantBarcode);
+                    if (variantBarcode != null && !variantBarcode.isEmpty()) {
+                        variant.setBarcode(variantBarcode);
+                    } else {
+                        String generated = productVariantService.generateRandomBarcode();
+                        System.out.println("DEBUG: Bulk Import - Auto-generated barcode: " + generated + " for SKU: "
+                                + variantSku);
+                        variant.setBarcode(generated);
+                    }
                     if (!variantAttributes.isEmpty()) {
                         JsonNode attributesJson = objectMapper.readTree(variantAttributes);
                         variant.setAttributes(attributesJson);
@@ -209,14 +236,16 @@ public class ProductService {
                     try {
                         variant.setPriceCents(Integer.parseInt(priceCentsStr));
                     } catch (NumberFormatException e) {
-                        throw new IllegalArgumentException("Invalid number format for Variant Price '" + priceCentsStr + "'.");
+                        throw new IllegalArgumentException(
+                                "Invalid number format for Variant Price '" + priceCentsStr + "'.");
                     }
 
                     if (!costCentsStr.isEmpty()) {
                         try {
                             variant.setCostCents(Integer.parseInt(costCentsStr));
                         } catch (NumberFormatException e) {
-                            throw new IllegalArgumentException("Invalid number format for Variant Cost '" + costCentsStr + "'.");
+                            throw new IllegalArgumentException(
+                                    "Invalid number format for Variant Cost '" + costCentsStr + "'.");
                         }
                     }
 
@@ -240,7 +269,8 @@ public class ProductService {
                         try {
                             quantity = Long.parseLong(initialStockStr);
                         } catch (NumberFormatException e) {
-                            throw new IllegalArgumentException("Invalid number format for Initial Stock Quantity '" + initialStockStr + "'.");
+                            throw new IllegalArgumentException(
+                                    "Invalid number format for Initial Stock Quantity '" + initialStockStr + "'.");
                         }
 
                         if (quantity > 0) {
@@ -264,6 +294,21 @@ public class ProductService {
             Collection<Product> savedProducts = productRepository.saveAll(productsToCreate.values());
             productsCreated = savedProducts.size();
             variantsCreated = savedProducts.stream().mapToInt(p -> p.getVariants().size()).sum();
+
+            // Generate barcode images for all variants from bulk import
+            for (Product savedProduct : savedProducts) {
+                if (savedProduct.getVariants() != null) {
+                    for (ProductVariant variant : savedProduct.getVariants()) {
+                        try {
+                            productVariantService.generateAndSetBarcodeUrl(variant);
+                        } catch (Exception e) {
+                            System.out.println(
+                                    "DEBUG: Failed to generate barcode image for bulk variant: " + variant.getSku());
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }
 
             // After products are saved, variants have IDs. Now create stock movements.
             if (!stockMovementsToCreate.isEmpty()) {
@@ -292,8 +337,7 @@ public class ProductService {
 
         try (
                 Workbook workbook = new XSSFWorkbook();
-                ByteArrayOutputStream baos = new ByteArrayOutputStream()
-        ) {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             // 1. Create main sheet for products
             Sheet productSheet = workbook.createSheet("Products");
 
@@ -327,7 +371,7 @@ public class ProductService {
             exampleRow.createCell(4).setCellValue("123456789012");
             exampleRow.createCell(5).setCellValue("{\"color\":\"Red\", \"size\":\"Small\"}");
             exampleRow.createCell(6).setCellValue(1500); // e.g., $15.00
-            exampleRow.createCell(7).setCellValue(700);  // e.g., $7.00
+            exampleRow.createCell(7).setCellValue(700); // e.g., $7.00
             exampleRow.createCell(8).setCellValue("VAT 5%");
             exampleRow.createCell(9).setCellValue("Main Store");
             exampleRow.createCell(10).setCellValue(50);
@@ -336,18 +380,20 @@ public class ProductService {
             // 2. Create a helper sheet for Categories
             Sheet categorySheet = workbook.createSheet("Available Categories");
             List<Category> categories = categoryRepository.findByTenantId(currentTenant.getId());
-            createHelperSheet(categorySheet, "Category Name", categories.stream().map(Category::getName).collect(Collectors.toList()), headerCellStyle);
+            createHelperSheet(categorySheet, "Category Name",
+                    categories.stream().map(Category::getName).collect(Collectors.toList()), headerCellStyle);
 
             // 3. Create a helper sheet for Tax Rates
             Sheet taxSheet = workbook.createSheet("Available Tax Rates");
             List<TaxRate> taxRates = taxRateRepository.findByTenantId(currentTenant.getId());
-            createHelperSheet(taxSheet, "Tax Rate Name", taxRates.stream().map(TaxRate::getName).collect(Collectors.toList()), headerCellStyle);
+            createHelperSheet(taxSheet, "Tax Rate Name",
+                    taxRates.stream().map(TaxRate::getName).collect(Collectors.toList()), headerCellStyle);
 
             // 4. Create a helper sheet for Stores
             Sheet storeSheet = workbook.createSheet("Available Stores");
             List<Store> stores = storeRepository.findByTenantId(currentTenant.getId());
-            createHelperSheet(storeSheet, "Store Name", stores.stream().map(Store::getName).collect(Collectors.toList()), headerCellStyle);
-
+            createHelperSheet(storeSheet, "Store Name",
+                    stores.stream().map(Store::getName).collect(Collectors.toList()), headerCellStyle);
 
             workbook.write(baos);
             return baos.toByteArray();
@@ -356,7 +402,6 @@ public class ProductService {
             throw new IOException("Failed to generate Excel template.", e);
         }
     }
-
 
     @Transactional(readOnly = true)
     public List<ProductDto> getAllProductsForCurrentTenant() {
@@ -375,7 +420,8 @@ public class ProductService {
     @Transactional(readOnly = true)
     public List<ProductDto> getProductsByCategoryName(String categoryName) {
         Tenant currentTenant = getCurrentTenant();
-        List<Product> products = productRepository.findByTenantIdAndCategoryNameIgnoreCase(currentTenant.getId(), categoryName);
+        List<Product> products = productRepository.findByTenantIdAndCategoryNameIgnoreCase(currentTenant.getId(),
+                categoryName);
         return products.stream().map(this::toDto).collect(Collectors.toList());
     }
 
@@ -406,7 +452,8 @@ public class ProductService {
                         (first, second) -> first // In case of duplicate SKUs in DB, pick the first one.
                 ));
 
-        List<ProductVariantRequest> incomingVariants = request.getVariants() != null ? request.getVariants() : new ArrayList<>();
+        List<ProductVariantRequest> incomingVariants = request.getVariants() != null ? request.getVariants()
+                : new ArrayList<>();
 
         // 1. Update existing variants or create new ones
         for (ProductVariantRequest variantRequest : incomingVariants) {
@@ -417,7 +464,8 @@ public class ProductService {
                 existingVariantsBySku.remove(variantRequest.getSku()); // Remove from map to track which ones are left
             } else {
                 // Create new
-                ProductVariant newVariant = mapVariantRequestToEntity(variantRequest, new ProductVariant(), product, currentTenant.getId());
+                ProductVariant newVariant = mapVariantRequestToEntity(variantRequest, new ProductVariant(), product,
+                        currentTenant.getId());
                 product.getVariants().add(newVariant);
             }
         }
@@ -427,7 +475,8 @@ public class ProductService {
 
         // 3. Soft-delete or hard-delete variants that are being removed
         for (ProductVariant variantToRemove : variantsToRemove) {
-            boolean hasBeenSold = variantToRemove.getId() != null && saleItemRepository.existsByProductVariantId(variantToRemove.getId());
+            boolean hasBeenSold = variantToRemove.getId() != null
+                    && saleItemRepository.existsByProductVariantId(variantToRemove.getId());
             if (hasBeenSold) {
                 variantToRemove.setActive(false); // Soft delete
             } else {
@@ -444,9 +493,57 @@ public class ProductService {
         Product product = productRepository.findByIdAndTenantId(id, getCurrentTenant().getId())
                 .orElseThrow(() -> new RuntimeException("Product not found with id: " + id));
 
-        // Before deleting the product, we must delete dependent records to avoid foreign key constraints.
+        // Check if any variant of this product has been sold
+        boolean hasSalesHistory = false;
         if (product.getVariants() != null && !product.getVariants().isEmpty()) {
-            List<Long> variantIds = product.getVariants().stream().map(ProductVariant::getId).collect(Collectors.toList());
+            for (ProductVariant variant : product.getVariants()) {
+                if (saleItemRepository.existsByProductVariantId(variant.getId())) {
+                    hasSalesHistory = true;
+                    break;
+                }
+            }
+        }
+
+        if (hasSalesHistory) {
+            // Soft delete
+            product.setActive(false);
+            if (product.getVariants() != null) {
+                product.getVariants().forEach(v -> v.setActive(false));
+            }
+            productRepository.save(product);
+        } else {
+            // Hard delete
+            // Before deleting the product, we must delete dependent records to avoid
+            // foreign key constraints.
+            if (product.getVariants() != null && !product.getVariants().isEmpty()) {
+                List<Long> variantIds = product.getVariants().stream().map(ProductVariant::getId)
+                        .collect(Collectors.toList());
+                // Delete associated inventory records
+                inventoryRepository.deleteByProductVariantIdIn(variantIds);
+                // Delete associated stock movement records
+                stockMovementRepository.deleteByProductVariantIdIn(variantIds);
+            }
+
+            productRepository.delete(product);
+        }
+    }
+
+    public void hardDeleteProduct(Long id) {
+        Product product = productRepository.findByIdAndTenantId(id, getCurrentTenant().getId())
+                .orElseThrow(() -> new RuntimeException("Product not found with id: " + id));
+
+        if (product.getVariants() != null && !product.getVariants().isEmpty()) {
+            for (ProductVariant variant : product.getVariants()) {
+                // Unlink from sales
+                List<SaleItem> saleItems = saleItemRepository.findByProductVariantId(variant.getId());
+                for (SaleItem item : saleItems) {
+                    item.setProductVariant(null);
+                    saleItemRepository.save(item);
+                }
+            }
+
+            List<Long> variantIds = product.getVariants().stream().map(ProductVariant::getId)
+                    .collect(Collectors.toList());
             // Delete associated inventory records
             inventoryRepository.deleteByProductVariantIdIn(variantIds);
             // Delete associated stock movement records
@@ -456,18 +553,34 @@ public class ProductService {
         productRepository.delete(product);
     }
 
-    private ProductVariant mapVariantRequestToEntity(ProductVariantRequest request, ProductVariant variant, Product product, Long tenantId) {
+    private ProductVariant mapVariantRequestToEntity(ProductVariantRequest request, ProductVariant variant,
+            Product product, Long tenantId) {
         variant.setProduct(product);
-        variant.setSku(request.getSku());
-        variant.setBarcode(request.getBarcode());
+        if (request.getSku() != null && !request.getSku().isBlank()) {
+            variant.setSku(request.getSku());
+        } else if (variant.getSku() == null) {
+            // Auto-generate SKU if missing and it's a new variant (or existing variant has
+            // no SKU, which shouldn't happen)
+            variant.setSku("SKU-" + System.currentTimeMillis() + "-" + (int) (Math.random() * 1000));
+        }
+        if (request.getBarcode() == null || request.getBarcode().trim().isEmpty()) {
+            // Auto-generate barcode if not provided
+            String generated = productVariantService.generateRandomBarcode();
+            System.out.println("DEBUG: Auto-generated barcode: " + generated + " for SKU: " + variant.getSku());
+            variant.setBarcode(generated);
+        } else {
+            variant.setBarcode(request.getBarcode());
+        }
         if (request.getAttributes() != null) {
             variant.setAttributes(request.getAttributes());
         } else {
-            // If attributes are not provided in the request, set to null or an empty JSON object
+            // If attributes are not provided in the request, set to null or an empty JSON
+            // object
             variant.setAttributes(objectMapper.createObjectNode());
         }
 
-        // If active flag is not provided in request, default to true for new/updated variants
+        // If active flag is not provided in request, default to true for new/updated
+        // variants
         if (request.getActive() != null) {
             variant.setActive(request.getActive());
         } else if (variant.getId() == null) { // New variant

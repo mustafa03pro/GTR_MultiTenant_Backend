@@ -51,6 +51,16 @@ public class Sale {
 
     private Long discountCents = 0L;
 
+    private String discountType; // e.g., "Seasonal", "Coupon", "Test"
+
+    @Column(columnDefinition = "TEXT")
+    private String discountReason;
+
+    @Column(columnDefinition = "TEXT")
+    private String cancellationReason;
+
+    private OffsetDateTime cancelledTime;
+
     private Long deliveryCharge;
 
     private Long totalCents;
@@ -60,6 +70,31 @@ public class Sale {
 
     @Column(nullable = false)
     private String paymentStatus = "unpaid"; // unpaid, paid, partial
+
+    @Enumerated(EnumType.STRING)
+    private com.example.multi_tanent.pos.enums.OrderType orderType;
+
+    private Integer adultsCount;
+
+    private Integer kidsCount;
+
+    private String salesSource; // e.g., "POS", "Online"
+
+    private String salesSourceReference; // e.g. referral name, ad ID
+
+    private String carNumber;
+
+    private OffsetDateTime deliveredTime;
+
+    @ManyToOne
+    @JoinColumn(name = "driver_id")
+    private User driver;
+
+    private String deliveryAddress;
+
+    private OffsetDateTime dispatchedTime;
+
+    private OffsetDateTime expectedDeliveryTime;
 
     private OffsetDateTime createdAt;
 
@@ -74,7 +109,9 @@ public class Sale {
 
     @PrePersist
     public void prePersist() {
-        if (createdAt == null) createdAt = OffsetDateTime.now();
-        if (invoiceDate == null) invoiceDate = OffsetDateTime.now();
+        if (createdAt == null)
+            createdAt = OffsetDateTime.now();
+        if (invoiceDate == null)
+            invoiceDate = OffsetDateTime.now();
     }
 }

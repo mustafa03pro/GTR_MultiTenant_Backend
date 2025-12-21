@@ -26,5 +26,10 @@ public class SaleDto {
     private Long deliveryCharge;
     private Long totalCents;
 
+    private String orderType;
+    private Integer adultsCount;
+    private Integer kidsCount;
+    private String salesSource;
+
     private List<SaleItemDto> items;
 }

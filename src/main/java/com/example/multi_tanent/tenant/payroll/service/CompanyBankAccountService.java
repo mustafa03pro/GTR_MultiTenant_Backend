@@ -1,7 +1,7 @@
 package com.example.multi_tanent.tenant.payroll.service;
 
-import com.example.multi_tanent.tenant.base.entity.CompanyBankAccount;
-import com.example.multi_tanent.tenant.base.entity.CompanyInfo;
+import com.example.multi_tanent.spersusers.enitity.CompanyBankAccount;
+import com.example.multi_tanent.spersusers.enitity.CompanyInfo;
 import com.example.multi_tanent.tenant.payroll.dto.CompanyBankAccountRequest;
 import com.example.multi_tanent.tenant.payroll.repository.CompanyBankAccountRepository;
 import com.example.multi_tanent.tenant.payroll.repository.CompanyInfoRepository;
@@ -17,7 +17,8 @@ public class CompanyBankAccountService {
     private final CompanyBankAccountRepository bankAccountRepository;
     private final CompanyInfoRepository companyInfoRepository;
 
-    public CompanyBankAccountService(CompanyBankAccountRepository bankAccountRepository, CompanyInfoRepository companyInfoRepository) {
+    public CompanyBankAccountService(CompanyBankAccountRepository bankAccountRepository,
+            CompanyInfoRepository companyInfoRepository) {
         this.bankAccountRepository = bankAccountRepository;
         this.companyInfoRepository = companyInfoRepository;
     }
@@ -28,7 +29,8 @@ public class CompanyBankAccountService {
 
     public CompanyBankAccount createBankAccount(CompanyBankAccountRequest request) {
         CompanyInfo companyInfo = companyInfoRepository.findAll().stream().findFirst()
-                .orElseThrow(() -> new IllegalStateException("CompanyInfo not found for this tenant. Please create it first."));
+                .orElseThrow(() -> new IllegalStateException(
+                        "CompanyInfo not found for this tenant. Please create it first."));
 
         CompanyBankAccount bankAccount = new CompanyBankAccount();
         mapRequestToEntity(request, bankAccount);

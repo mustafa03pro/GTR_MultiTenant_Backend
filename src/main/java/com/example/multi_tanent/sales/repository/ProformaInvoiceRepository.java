@@ -1,6 +1,8 @@
 package com.example.multi_tanent.sales.repository;
 
 import com.example.multi_tanent.sales.entity.ProformaInvoice;
+import com.example.multi_tanent.spersusers.enitity.Tenant;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -28,4 +30,6 @@ public interface ProformaInvoiceRepository extends JpaRepository<ProformaInvoice
             @Param("toDate") LocalDate toDate,
             @Param("salespersonId") Long salespersonId,
             Pageable pageable);
+
+    Optional<Tenant> findByInvoiceNumberAndTenantId(String invoiceNumber, Long id);
 }

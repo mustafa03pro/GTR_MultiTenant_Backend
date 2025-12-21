@@ -68,7 +68,7 @@ public class RentalQuotation {
     private Employee salesperson;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "quotation_type")
+    @Column(name = "quotation_type", length = 64)
     private QuotationType quotationType;
 
     @OneToMany(mappedBy = "rentalQuotation", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -123,6 +123,7 @@ public class RentalQuotation {
     private String emailTo;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 50)
     private SalesStatus status;
 
     @Column(name = "created_by")

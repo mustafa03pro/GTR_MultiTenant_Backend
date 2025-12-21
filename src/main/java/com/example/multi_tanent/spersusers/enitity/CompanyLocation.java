@@ -1,4 +1,4 @@
-package com.example.multi_tanent.tenant.base.entity;
+package com.example.multi_tanent.spersusers.enitity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
@@ -7,9 +7,9 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
 @Entity
-@Table(name = "company_bank_accounts")
+@Table(name = "company_locations")
 @Data
-public class CompanyBankAccount {
+public class CompanyLocation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -22,16 +22,13 @@ public class CompanyBankAccount {
     private CompanyInfo companyInfo;
 
     @Column(nullable = false)
-    private String bankName;
+    private String locationName; // e.g., "Head Office", "Mumbai Branch"
 
-    @Column(nullable = false)
-    private String accountNumber;
+    private String address;
+    private String city;
+    private String state;
+    private String postalCode;
+    private String country;
 
-    @Column(nullable = false)
-    private String ifscCode;
-
-    private String accountHolderName;
-    private String branchName;
-
-    private boolean isPrimary; // For the primary salary disbursement account
+    private boolean isPrimary; // To mark the main/head office
 }

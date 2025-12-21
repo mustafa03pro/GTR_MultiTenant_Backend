@@ -2,6 +2,7 @@ package com.example.multi_tanent.sales.controller;
 
 import com.example.multi_tanent.sales.dto.ProformaInvoiceRequest;
 import com.example.multi_tanent.sales.dto.ProformaInvoiceResponse;
+import com.example.multi_tanent.sales.enums.SalesStatus;
 import com.example.multi_tanent.sales.service.ProformaInvoiceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -69,4 +70,18 @@ public class ProformaInvoiceController {
         proformaInvoiceService.deleteProformaInvoice(id);
         return ResponseEntity.noContent().build();
     }
+
+    @RequestMapping(value = "/{id}/status", method = { RequestMethod.PATCH, RequestMethod.POST, RequestMethod.PUT })
+    public ResponseEntity<ProformaInvoiceResponse> updateStatus(@PathVariable Long id, @RequestParam SalesStatus status) {
+        return ResponseEntity.ok(proformaInvoiceService.updateStatus(id, status));
+    }
+
+    // @RequestMapping(value = { "/status-by-number", "/status/by-number" }, method = { RequestMethod.PATCH,
+    //         RequestMethod.POST,
+    //         RequestMethod.PUT })
+    // public ResponseEntity<ProformaInvoiceResponse> updateStatusByNumber(
+    //         @RequestParam String invoiceNumber,
+    //         @RequestParam SalesStatus status) {
+    //     return ResponseEntity.ok(proformaInvoiceService.updateStatusByNumber(invoiceNumber, status));
+    // }
 }

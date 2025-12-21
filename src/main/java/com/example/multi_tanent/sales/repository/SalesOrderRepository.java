@@ -9,8 +9,11 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
+public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long>,
+        org.springframework.data.jpa.repository.JpaSpecificationExecutor<SalesOrder> {
     Page<SalesOrder> findByTenantId(Long tenantId, Pageable pageable);
 
     Optional<SalesOrder> findByIdAndTenantId(Long id, Long tenantId);
+
+    Optional<SalesOrder> findBySalesOrderNumberAndTenantId(String salesOrderNumber, Long tenantId);
 }

@@ -371,6 +371,7 @@ import com.example.multi_tanent.config.TenantContext;
 import com.example.multi_tanent.purchases.dto.*;
 import com.example.multi_tanent.purchases.entity.*;
 import com.example.multi_tanent.purchases.repository.PurPurchaseOrderRepository;
+import com.example.multi_tanent.purchases.repository.PurGrnItemRepository;
 import com.example.multi_tanent.production.repository.*;
 import com.example.multi_tanent.spersusers.enitity.Location;
 import com.example.multi_tanent.spersusers.enitity.Tenant;
@@ -422,6 +423,7 @@ public class PurPurchaseOrderService {
     private final FileStorageService fileStorageService;
     private final LocationRepository locationRepo;
     private final PurPurchaseInvoiceService invoiceService;
+    private final PurPurchasePaymentService paymentService;
 
     private Tenant currentTenant() {
         String key = TenantContext.getTenantId();
@@ -585,10 +587,26 @@ public class PurPurchaseOrderService {
         return toResponse(updated);
     }
 
+    private final PurGrnItemRepository grnItemRepo;
+
+    // ... (existing helper methods)
+
     public void delete(Long id) {
         Tenant t = currentTenant();
         PurPurchaseOrder po = repo.findByIdAndTenantId(id, t.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Purchase order not found: " + id));
+
+        // Validation: Check if any PO items are linked to a GRN
+        if (po.getItems() != null && !po.getItems().isEmpty()) {
+            List<Long> itemIds = po.getItems().stream()
+                    .map(PurPurchaseOrderItem::getId)
+                    .collect(Collectors.toList());
+            if (grnItemRepo.existsByPurchaseOrderItemIdIn(itemIds)) {
+                throw new IllegalStateException(
+                        "Cannot delete Purchase Order because one or more items are linked to a Goods Received Note (GRN). Please delete the GRN first.");
+            }
+        }
+
         repo.delete(po);
     }
 
@@ -725,6 +743,8 @@ public class PurPurchaseOrderService {
                 .totalDiscount(po.getTotalDiscount())
                 .totalTax(po.getTotalTax())
                 .totalAmount(po.getTotalAmount())
+                // Gross Total = SubTotal - Discount
+                .grossTotal(po.getSubTotal().subtract(po.getTotalDiscount()))
                 .tenantId(po.getTenant() != null ? po.getTenant().getId() : null)
                 .locationId(po.getLocation() != null ? po.getLocation().getId() : null)
                 .locationName(po.getLocation() != null ? po.getLocation().getName() : null)
@@ -855,5 +875,31 @@ public class PurPurchaseOrderService {
         repo.save(po);
 
         return invoice;
+    }
+
+    @Transactional
+    public PurPurchasePaymentResponse convertToPayment(Long id) {
+        Tenant t = currentTenant();
+        PurPurchaseOrder po = repo.findByIdAndTenantId(id, t.getId())
+                .orElseThrow(() -> new EntityNotFoundException("Purchase order not found: " + id));
+
+        PurPurchasePaymentRequest req = new PurPurchasePaymentRequest();
+        if (po.getSupplier() != null) {
+            req.setSupplierId(po.getSupplier().getId());
+        }
+
+        // Default amount to PO total amount
+        req.setAmount(po.getTotalAmount());
+        req.setPaymentDate(LocalDate.now());
+        req.setReference("Payment for PO: " + po.getPoNumber());
+        req.setCreatedBy(po.getCreatedBy());
+
+        // Note: We cannot automatically allocate because allocations link to Invoices,
+        // not POs directly.
+        // User will likely convert PO -> Invoice first, or this payment is an advance.
+
+        PurPurchasePaymentResponse payment = paymentService.create(req, null);
+
+        return payment;
     }
 }

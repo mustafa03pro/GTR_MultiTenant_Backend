@@ -134,6 +134,11 @@ public class PurPurchaseOrderController {
         return ResponseEntity.ok(service.convertToBill(id));
     }
 
+    @PostMapping("/{id}/convert-to-payment")
+    public ResponseEntity<PurPurchasePaymentResponse> convertToPayment(@PathVariable Long id) {
+        return ResponseEntity.ok(service.convertToPayment(id));
+    }
+
     /**
      * Upload attachments for an existing purchase order.
      * Returns list of public URLs for uploaded files.

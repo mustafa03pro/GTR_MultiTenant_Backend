@@ -1,6 +1,6 @@
 package com.example.multi_tanent.tenant.payroll.controller;
 
-import com.example.multi_tanent.tenant.base.entity.CompanyLocation;
+import com.example.multi_tanent.spersusers.enitity.CompanyLocation;
 import com.example.multi_tanent.tenant.payroll.dto.CompanyLocationRequest;
 import com.example.multi_tanent.tenant.payroll.dto.CompanyLocationResponse;
 import com.example.multi_tanent.tenant.payroll.service.CompanyLocationService;
@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/company-locations")
 @CrossOrigin(origins = "*")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','HRMS_ADMIN','HR','MANAGER')")
+@PreAuthorize("hasAnyRole('SUPER_ADMIN','HRMS_ADMIN','HR','MANAGER')")
 public class CompanyLocationController {
 
     private final CompanyLocationService locationService;
@@ -42,7 +42,8 @@ public class CompanyLocationController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<CompanyLocationResponse> updateLocation(@PathVariable Long id, @RequestBody CompanyLocationRequest request) {
+    public ResponseEntity<CompanyLocationResponse> updateLocation(@PathVariable Long id,
+            @RequestBody CompanyLocationRequest request) {
         return ResponseEntity.ok(CompanyLocationResponse.fromEntity(locationService.updateLocation(id, request)));
     }
 

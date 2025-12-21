@@ -18,12 +18,38 @@ public class PurPurchasePaymentController {
 
     private final PurPurchasePaymentService service;
 
-    @PostMapping(consumes = { MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE })
+    @PostMapping
     public ResponseEntity<PurPurchasePaymentResponse> create(
-            @RequestPart("request") @Valid PurPurchasePaymentRequest req,
-            @RequestPart(value = "attachments", required = false) MultipartFile[] attachments) {
-        PurPurchasePaymentResponse resp = service.create(req, attachments);
+            @ModelAttribute PurPurchasePaymentRequest req,
+            @RequestParam(value = "files", required = false) MultipartFile[] files,
+            jakarta.servlet.http.HttpServletRequest httpReq) {
+
+        System.out.println("DEBUG: create payment called");
+        System.out.println("DEBUG: Params: " + httpReq.getParameterMap().keySet());
+        try {
+            if (httpReq instanceof org.springframework.web.multipart.MultipartHttpServletRequest) {
+                System.out.println(
+                        "DEBUG: Parts: " + ((org.springframework.web.multipart.MultipartHttpServletRequest) httpReq)
+                                .getFileMap().keySet());
+            }
+        } catch (Exception e) {
+            System.out.println("DEBUG: Error checking parts " + e.getMessage());
+        }
+
+        // Temporary fallback: if amount is null, maybe it is in a 'request' param as
+        // JSON string?
+
+        PurPurchasePaymentResponse resp = service.create(req, files);
         return ResponseEntity.status(HttpStatus.CREATED).body(resp);
+    }
+
+    @PostMapping("/{id}/attachments")
+    public ResponseEntity<List<String>> uploadAttachments(
+            @PathVariable Long id,
+            @RequestParam("files") MultipartFile[] files,
+            @RequestParam(value = "uploadedBy", required = false) String uploadedBy) {
+        List<String> urls = service.attachFiles(id, files, uploadedBy);
+        return ResponseEntity.ok(urls);
     }
 
     @GetMapping

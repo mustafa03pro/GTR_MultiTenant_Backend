@@ -1,6 +1,8 @@
 package com.example.multi_tanent.sales.enums;
 
 public enum QuotationType {
-    WITH_DISCOUNT,
-    WITHOUT_DISCOUNT
+    WITHOUT_DISCOUNT,
+    WITH_DISCOUNT_AT_ITEM_LEVEL,
+    WITH_DISCOUNT_AT_ORDER_LEVEL,
+    WITH_DISCOUNT
 }

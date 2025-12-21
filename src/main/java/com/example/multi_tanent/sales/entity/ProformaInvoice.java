@@ -106,6 +106,7 @@ public class ProformaInvoice {
     private String emailTo;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 50)
     private SalesStatus status;
 
     @Column(name = "created_by")

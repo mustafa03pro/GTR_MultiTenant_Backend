@@ -24,5 +24,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.example.multi_tanent.purchases.entity.PurGrnItem;
 
 public interface PurGrnItemRepository extends JpaRepository<PurGrnItem, Long> {
-    // add custom queries if needed
+    boolean existsByPurchaseOrderItemIdIn(java.util.Collection<Long> purchaseOrderItemIds);
 }

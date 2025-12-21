@@ -11,13 +11,12 @@ import com.example.multi_tanent.spersusers.enums.EmployeeStatus;
 import com.example.multi_tanent.spersusers.enums.Gender;
 import com.example.multi_tanent.spersusers.enums.MartialStatus;
 
-
-
-public interface EmployeeRepository extends JpaRepository<Employee, Long> { 
+public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     Optional<Employee> findByUserId(Long userId);
 
     Optional<Employee> findByEmployeeCode(String employeeCode);
 
+    Optional<Employee> findByIdAndUser_Tenant_Id(Long id, Long tenantId);
 
     List<Employee> findByGender(Gender gender);
 

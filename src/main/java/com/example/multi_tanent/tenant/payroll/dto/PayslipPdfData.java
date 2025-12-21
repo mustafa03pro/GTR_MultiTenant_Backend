@@ -1,7 +1,7 @@
 package com.example.multi_tanent.tenant.payroll.dto;
 
+import com.example.multi_tanent.spersusers.enitity.CompanyInfo;
 import com.example.multi_tanent.spersusers.enitity.Tenant;
-import com.example.multi_tanent.tenant.base.entity.CompanyInfo;
 import com.example.multi_tanent.tenant.employee.entity.EmployeeProfile;
 import com.example.multi_tanent.tenant.employee.entity.JobDetails;
 import com.example.multi_tanent.tenant.payroll.entity.Payslip;

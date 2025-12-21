@@ -6,7 +6,6 @@ import lombok.Data;
 
 @Data
 public class ProductVariantRequest {
-    @NotBlank(message = "Variant SKU is required")
     private String sku;
 
     private String barcode;

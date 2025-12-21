@@ -55,6 +55,12 @@ public class PurPurchaseInvoiceController {
         return ResponseEntity.ok(service.update(id, req, attachments));
     }
 
+    @PostMapping("/{id}/convert-to-payment")
+    public ResponseEntity<com.example.multi_tanent.purchases.dto.PurPurchasePaymentResponse> convertToPayment(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(service.convertToPayment(id));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);

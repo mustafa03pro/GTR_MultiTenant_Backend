@@ -40,8 +40,25 @@ public class SalesOrderController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<SalesOrderResponse>> getAllSalesOrders(@PageableDefault(size = 10) Pageable pageable) {
-        return ResponseEntity.ok(salesOrderService.getAllSalesOrders(pageable));
+    public ResponseEntity<Page<SalesOrderResponse>> getAllSalesOrders(
+            @RequestParam(required = false) String customerName,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate startDate,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate endDate,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Long salespersonId,
+            @PageableDefault(size = 10) Pageable pageable) {
+
+        SalesStatus statusEnum = null;
+        if (status != null && !status.isEmpty() && !"All".equalsIgnoreCase(status)) {
+            try {
+                statusEnum = SalesStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // ignore invalid status
+            }
+        }
+
+        return ResponseEntity.ok(salesOrderService.getAllSalesOrders(customerName, startDate, endDate, statusEnum,
+                salespersonId, pageable));
     }
 
     @DeleteMapping("/{id}")
@@ -53,6 +70,13 @@ public class SalesOrderController {
     @PatchMapping("/{id}/status")
     public ResponseEntity<SalesOrderResponse> updateStatus(@PathVariable Long id, @RequestParam SalesStatus status) {
         return ResponseEntity.ok(salesOrderService.updateStatus(id, status));
+    }
+
+    @PatchMapping("/update-status-by-number")
+    public ResponseEntity<SalesOrderResponse> updateStatusByNumber(
+            @RequestParam String salesOrderNumber,
+            @RequestParam SalesStatus status) {
+        return ResponseEntity.ok(salesOrderService.updateStatusByNumber(salesOrderNumber, status));
     }
 
     @GetMapping("/{id}/pdf")

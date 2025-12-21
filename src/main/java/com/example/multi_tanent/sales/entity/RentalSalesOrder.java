@@ -75,6 +75,9 @@ public class RentalSalesOrder {
     @OneToMany(mappedBy = "rentalSalesOrder", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RentalSalesOrderItem> items = new ArrayList<>();
 
+    @OneToMany(mappedBy = "rentalSalesOrder", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<RentalItemRecieved> rentalItemsReceived = new ArrayList<>();
+
     @Column(name = "rental_duration_days")
     private Integer rentalDurationDays;
 
@@ -124,6 +127,7 @@ public class RentalSalesOrder {
     private String emailTo;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 50)
     private SalesStatus status;
 
     @Column(name = "created_by")

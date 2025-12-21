@@ -36,7 +36,7 @@ public class CrmLeadStageService {
     public List<CrmLeadStageResponse> getAll() {
         Tenant t = currentTenant();
         return repo.findByTenantIdOrderBySortOrderAscIdAsc(t.getId())
-                   .stream().map(this::toResponse).toList();
+                .stream().map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
@@ -61,7 +61,8 @@ public class CrmLeadStageService {
         Location location = null;
         if (req.getLocationId() != null) {
             location = locationRepository.findById(req.getLocationId())
-                    .orElseThrow(() -> new EntityNotFoundException("Location not found with id: " + req.getLocationId()));
+                    .orElseThrow(
+                            () -> new EntityNotFoundException("Location not found with id: " + req.getLocationId()));
         }
 
         CrmLeadStage e = CrmLeadStage.builder()
@@ -70,11 +71,15 @@ public class CrmLeadStageService {
                 .name(name)
                 .isDefault(req.isDefault())
                 .sortOrder(req.getSortOrder() != null ? req.getSortOrder() : nextOrder)
+                .moveTo(req.getMoveTo())
                 .build();
 
         if (e.isDefault()) {
             repo.findFirstByTenantIdAndIsDefaultTrue(t.getId())
-                    .ifPresent(prev -> { prev.setDefault(false); repo.save(prev); });
+                    .ifPresent(prev -> {
+                        prev.setDefault(false);
+                        repo.save(prev);
+                    });
         }
 
         return toResponse(repo.save(e));
@@ -96,18 +101,27 @@ public class CrmLeadStageService {
 
         if (req.getLocationId() != null) {
             Location location = locationRepository.findById(req.getLocationId())
-                    .orElseThrow(() -> new EntityNotFoundException("Location not found with id: " + req.getLocationId()));
+                    .orElseThrow(
+                            () -> new EntityNotFoundException("Location not found with id: " + req.getLocationId()));
             e.setLocation(location);
         } else {
             e.setLocation(null);
         }
 
-        if (req.getSortOrder() != null) e.setSortOrder(req.getSortOrder());
+        if (req.getMoveTo() != null) {
+            e.setMoveTo(req.getMoveTo());
+        }
+
+        if (req.getSortOrder() != null)
+            e.setSortOrder(req.getSortOrder());
 
         if (req.isDefault() != e.isDefault()) {
             if (req.isDefault()) {
                 repo.findFirstByTenantIdAndIsDefaultTrue(t.getId())
-                        .ifPresent(prev -> { prev.setDefault(false); repo.save(prev); });
+                        .ifPresent(prev -> {
+                            prev.setDefault(false);
+                            repo.save(prev);
+                        });
                 e.setDefault(true);
             } else {
                 e.setDefault(false);
@@ -129,8 +143,10 @@ public class CrmLeadStageService {
         CrmLeadStage e = repo.findByIdAndTenantId(id, t.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Lead stage not found: " + id));
 
-        var prev = repo.findFirstByTenantIdAndSortOrderLessThanOrderBySortOrderDesc(t.getId(), e.getSortOrder()).orElse(null);
-        if (prev == null) return toResponse(e);
+        var prev = repo.findFirstByTenantIdAndSortOrderLessThanOrderBySortOrderDesc(t.getId(), e.getSortOrder())
+                .orElse(null);
+        if (prev == null)
+            return toResponse(e);
 
         int tmp = e.getSortOrder();
         e.setSortOrder(prev.getSortOrder());
@@ -145,8 +161,10 @@ public class CrmLeadStageService {
         CrmLeadStage e = repo.findByIdAndTenantId(id, t.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Lead stage not found: " + id));
 
-        var next = repo.findFirstByTenantIdAndSortOrderGreaterThanOrderBySortOrderAsc(t.getId(), e.getSortOrder()).orElse(null);
-        if (next == null) return toResponse(e);
+        var next = repo.findFirstByTenantIdAndSortOrderGreaterThanOrderBySortOrderAsc(t.getId(), e.getSortOrder())
+                .orElse(null);
+        if (next == null)
+            return toResponse(e);
 
         int tmp = e.getSortOrder();
         e.setSortOrder(next.getSortOrder());
@@ -162,7 +180,12 @@ public class CrmLeadStageService {
                 .orElseThrow(() -> new EntityNotFoundException("Lead stage not found: " + id));
 
         repo.findFirstByTenantIdAndIsDefaultTrue(t.getId())
-                .ifPresent(prev -> { if (!prev.getId().equals(e.getId())) { prev.setDefault(false); repo.save(prev); } });
+                .ifPresent(prev -> {
+                    if (!prev.getId().equals(e.getId())) {
+                        prev.setDefault(false);
+                        repo.save(prev);
+                    }
+                });
         e.setDefault(true);
         return toResponse(repo.save(e));
     }
@@ -173,6 +196,7 @@ public class CrmLeadStageService {
                 .name(e.getName())
                 .isDefault(e.isDefault())
                 .sortOrder(e.getSortOrder())
+                .moveTo(e.getMoveTo())
                 .tenantId(e.getTenant() != null ? e.getTenant().getId() : null);
 
         if (e.getLocation() != null) {

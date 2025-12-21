@@ -37,12 +37,12 @@ public class ProductVariantService {
     private final MasterTenantRepository masterTenantRepository;
 
     public ProductVariantService(ProductRepository productRepository,
-                                 ProductVariantRepository productVariantRepository,
-                                 TenantRepository tenantRepository,
-                                 TaxRateRepository taxRateRepository,
-                                 SaleItemRepository saleItemRepository,
-                                 BarCodeService barCodeService,
-                                 MasterTenantRepository masterTenantRepository) {
+            ProductVariantRepository productVariantRepository,
+            TenantRepository tenantRepository,
+            TaxRateRepository taxRateRepository,
+            SaleItemRepository saleItemRepository,
+            BarCodeService barCodeService,
+            MasterTenantRepository masterTenantRepository) {
         this.productRepository = productRepository;
         this.productVariantRepository = productVariantRepository;
         this.tenantRepository = tenantRepository;
@@ -54,7 +54,8 @@ public class ProductVariantService {
 
     private Tenant getCurrentTenant() {
         return tenantRepository.findFirstByOrderByIdAsc()
-                .orElseThrow(() -> new IllegalStateException("Tenant context not found. Cannot perform variant operations."));
+                .orElseThrow(() -> new IllegalStateException(
+                        "Tenant context not found. Cannot perform variant operations."));
     }
 
     private Product getProductForCurrentTenant(Long productId) {
@@ -88,7 +89,8 @@ public class ProductVariantService {
     public ProductVariantDto updateVariant(Long productId, Long variantId, ProductVariantRequest request) {
         Product product = getProductForCurrentTenant(productId);
         ProductVariant existingVariant = productVariantRepository.findByIdAndProductId(variantId, productId)
-                .orElseThrow(() -> new RuntimeException("ProductVariant not found with id: " + variantId + " for product " + productId));
+                .orElseThrow(() -> new RuntimeException(
+                        "ProductVariant not found with id: " + variantId + " for product " + productId));
 
         String oldSku = existingVariant.getSku();
         ProductVariant updatedVariant = mapRequestToEntity(request, existingVariant, product);
@@ -118,12 +120,14 @@ public class ProductVariantService {
     /**
      * Finds a product variant by its SKU across all tenants.
      * This is useful for public-facing pages, like QR code scans.
+     * 
      * @param sku The SKU to search for.
      * @return An Optional containing the ProductVariantDto if found.
      */
     @Transactional(transactionManager = "tenantTx", propagation = Propagation.NEVER)
     public Optional<ProductVariantDto> findVariantBySkuGlobally(String sku) {
-        List<String> tenantIds = masterTenantRepository.findAll().stream().map(MasterTenant::getTenantId).collect(Collectors.toList());
+        List<String> tenantIds = masterTenantRepository.findAll().stream().map(MasterTenant::getTenantId)
+                .collect(Collectors.toList());
         for (String tenantId : tenantIds) {
             try {
                 TenantContext.setTenantId(tenantId);
@@ -138,9 +142,19 @@ public class ProductVariantService {
         return Optional.empty();
     }
 
-    private ProductVariant generateAndSetBarcodeUrl(ProductVariant variant) {
+    @Transactional(readOnly = true)
+    public Optional<ProductVariantDto> getVariantByBarcode(String barcode) {
+        // Ensure tenant context is active (handled by @Transactional("tenantTx") and
+        // existing filters)
+        // But we might need to be careful if this is a public scan vs authenticated
+        // scan.
+        // Assuming authenticated scan for now as per controller logic.
+        return productVariantRepository.findByBarcode(barcode).map(this::toDto);
+    }
+
+    public ProductVariant generateAndSetBarcodeUrl(ProductVariant variant) {
         try {
-            String barcodePath = barCodeService.generateAndSaveProductVariantQRCode(variant);
+            String barcodePath = barCodeService.generateAndSaveProductVariantBarcode(variant);
             variant.setBarcodeImageUrl(barcodePath);
             return productVariantRepository.save(variant);
         } catch (WriterException | IOException e) {
@@ -152,11 +166,19 @@ public class ProductVariantService {
     private ProductVariant mapRequestToEntity(ProductVariantRequest request, ProductVariant variant, Product product) {
         variant.setProduct(product);
         variant.setSku(request.getSku());
-        variant.setBarcode(request.getBarcode());
+
+        if (request.getBarcode() == null || request.getBarcode().trim().isEmpty()) {
+            // Auto-generate barcode if not provided
+            variant.setBarcode(generateRandomBarcode());
+        } else {
+            variant.setBarcode(request.getBarcode());
+        }
+
         variant.setAttributes(request.getAttributes());
         variant.setPriceCents(request.getPriceCents());
 
-        // If active flag is not provided in request, default to true for new/updated variants
+        // If active flag is not provided in request, default to true for new/updated
+        // variants
         if (request.getActive() != null) {
             variant.setActive(request.getActive());
         } else if (variant.getId() == null) { // New variant
@@ -199,11 +221,25 @@ public class ProductVariantService {
     }
 
     private String buildImageUrl(String relativePath) {
+        if (relativePath == null || relativePath.isBlank()) {
+            return null;
+        }
+        if (relativePath.startsWith("http://") || relativePath.startsWith("https://")) {
+            return relativePath;
+        }
         return ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path("/api/pos/uploads/view/") // This path needs to match the public view endpoint
                 .path(relativePath)
                 .build()
                 .toUriString()
                 .replace("\\", "/"); // Ensure forward slashes for URL
+    }
+
+    public String generateRandomBarcode() {
+        // Generate a random 12-digit number for the barcode
+        // This is a simple implementation. In a real scenario, you might want to ensure
+        // uniqueness or follow a specific standard like EAN-13.
+        long number = (long) (Math.random() * 1_000_000_000_000L);
+        return String.format("%012d", number);
     }
 }

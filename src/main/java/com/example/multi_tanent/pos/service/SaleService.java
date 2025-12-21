@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-
 import java.util.UUID;
 
 @Service
@@ -38,11 +37,11 @@ public class SaleService {
     private final InventoryRepository inventoryRepository;
     private final StoreRepository storeRepository;
     private final StockMovementService stockMovementService;
-    
+
     public SaleService(SaleRepository saleRepository, TenantRepository tenantRepository,
-                       UserRepository userRepository, CustomerRepository customerRepository,
-                       ProductVariantRepository productVariantRepository, StoreRepository storeRepository,
-                       InventoryRepository inventoryRepository, StockMovementService stockMovementService) {
+            UserRepository userRepository, CustomerRepository customerRepository,
+            ProductVariantRepository productVariantRepository, StoreRepository storeRepository,
+            InventoryRepository inventoryRepository, StockMovementService stockMovementService) {
         this.saleRepository = saleRepository;
         this.tenantRepository = tenantRepository;
         this.userRepository = userRepository;
@@ -77,6 +76,15 @@ public class SaleService {
         sale.setInvoiceDate(OffsetDateTime.now());
         sale.setStatus("completed"); // Default status
 
+        sale.setInvoiceDate(OffsetDateTime.now());
+        sale.setStatus("completed"); // Default status
+
+        sale.setOrderType(request.getOrderType() != null ? request.getOrderType()
+                : com.example.multi_tanent.pos.enums.OrderType.DINE_IN);
+        sale.setAdultsCount(request.getAdultsCount() != null ? request.getAdultsCount() : 0);
+        sale.setKidsCount(request.getKidsCount() != null ? request.getKidsCount() : 0);
+        sale.setSalesSource(request.getSalesSource() != null ? request.getSalesSource() : "POS");
+
         // Associate store if provided or from user
         // storeId is now mandatory in SaleRequest
         Store saleStore = storeRepository.findByIdAndTenantId(request.getStoreId(), currentTenant.getId())
@@ -101,17 +109,20 @@ public class SaleService {
                     .ifPresent(inventory -> {
                         if (inventory.getQuantity() < itemRequest.getQuantity()) {
                             stockErrors.add("Insufficient stock for SKU " + inventory.getProductVariant().getSku() +
-                                    ": Requested " + itemRequest.getQuantity() + ", but only " + inventory.getQuantity() + " available.");
+                                    ": Requested " + itemRequest.getQuantity() + ", but only " + inventory.getQuantity()
+                                    + " available.");
                         }
                     });
         }
         if (!stockErrors.isEmpty()) {
-            throw new IllegalStateException("Cannot complete sale due to stock issues: " + String.join("; ", stockErrors));
+            throw new IllegalStateException(
+                    "Cannot complete sale due to stock issues: " + String.join("; ", stockErrors));
         }
 
         List<SaleItem> saleItems = request.getItems().stream().map(itemRequest -> {
             ProductVariant variant = productVariantRepository.findById(itemRequest.getProductVariantId())
-                    .orElseThrow(() -> new RuntimeException("ProductVariant not found with id: " + itemRequest.getProductVariantId()));
+                    .orElseThrow(() -> new RuntimeException(
+                            "ProductVariant not found with id: " + itemRequest.getProductVariantId()));
 
             if (!variant.getProduct().getTenant().getId().equals(currentTenant.getId())) {
                 throw new SecurityException("Attempted to sell a product from another tenant.");
@@ -126,6 +137,7 @@ public class SaleService {
             SaleItem saleItem = new SaleItem();
             saleItem.setSale(sale);
             saleItem.setProductVariant(variant);
+            saleItem.setCostCents(variant.getCostCents());
             saleItem.setQuantity(itemRequest.getQuantity());
             saleItem.setUnitPriceCents(variant.getPriceCents());
             saleItem.setLineTotalCents(lineTotal);
@@ -184,7 +196,8 @@ public class SaleService {
     @Transactional(readOnly = true)
     public List<SaleDto> getAllSalesForCurrentTenant() {
         Tenant currentTenant = getCurrentTenant();
-        return saleRepository.findByTenantId(currentTenant.getId()).stream().map(this::toDto).collect(Collectors.toList());
+        return saleRepository.findByTenantId(currentTenant.getId()).stream().map(this::toDto)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -206,7 +219,8 @@ public class SaleService {
         // that reference it to avoid a foreign key constraint violation.
         if (sale.getStockMovements() != null) {
             sale.getStockMovements().forEach(movement -> movement.setRelatedSale(null));
-            // The changes to the movements will be persisted by cascade or implicitly when the transaction commits.
+            // The changes to the movements will be persisted by cascade or implicitly when
+            // the transaction commits.
         }
 
         // Before deleting the sale, reverse the stock movements to correct inventory.
@@ -219,7 +233,7 @@ public class SaleService {
                     .changeQuantity(item.getQuantity()) // Positive quantity to reverse the sale
                     .reason("Sale Deletion (Reversal for INV-" + sale.getInvoiceNo() + ")")
                     .build();
-            
+
             stockMovementService.createAndApplyStockMovement(reversalMovement);
         });
 
@@ -231,7 +245,7 @@ public class SaleService {
     }
 
     // private String generateOrderId() {
-    //     return "ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    // return "ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     // }
 
     private SaleDto toDto(Sale sale) {
@@ -257,6 +271,11 @@ public class SaleService {
         dto.setDiscountCents(sale.getDiscountCents());
         dto.setDeliveryCharge(sale.getDeliveryCharge());
         dto.setTotalCents(sale.getTotalCents());
+
+        dto.setOrderType(sale.getOrderType() != null ? sale.getOrderType().name() : null);
+        dto.setAdultsCount(sale.getAdultsCount());
+        dto.setKidsCount(sale.getKidsCount());
+        dto.setSalesSource(sale.getSalesSource());
 
         dto.setItems(sale.getItems().stream().map(this::toSaleItemDto).collect(Collectors.toList()));
         return dto;

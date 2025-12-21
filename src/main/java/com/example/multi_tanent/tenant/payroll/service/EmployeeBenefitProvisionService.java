@@ -1,11 +1,11 @@
 package com.example.multi_tanent.tenant.payroll.service;
 
+import com.example.multi_tanent.spersusers.enitity.CompanyInfo;
 import com.example.multi_tanent.spersusers.enitity.Employee;
 import com.example.multi_tanent.tenant.employee.repository.EmployeeRepository;
 import com.example.multi_tanent.tenant.payroll.dto.EmployeeBenefitProvisionRequest;
 import com.example.multi_tanent.tenant.payroll.dto.BenefitVoucherPdfData;
 import com.example.multi_tanent.tenant.payroll.dto.ProvisionPayoutRequest;
-import com.example.multi_tanent.tenant.base.entity.CompanyInfo;
 import com.example.multi_tanent.tenant.payroll.entity.BenefitPayoutFile;
 import com.example.multi_tanent.tenant.payroll.entity.BenefitType;
 import com.example.multi_tanent.tenant.payroll.repository.BenefitTypeRepository;
@@ -35,10 +35,10 @@ public class EmployeeBenefitProvisionService {
     private final CompanyInfoService companyInfoService;
 
     public EmployeeBenefitProvisionService(EmployeeBenefitProvisionRepository provisionRepository,
-                                           EmployeeRepository employeeRepository,
-                                           BenefitTypeRepository benefitTypeRepository,
-                                           FileStorageService fileStorageService,
-                                           CompanyInfoService companyInfoService) {
+            EmployeeRepository employeeRepository,
+            BenefitTypeRepository benefitTypeRepository,
+            FileStorageService fileStorageService,
+            CompanyInfoService companyInfoService) {
         this.provisionRepository = provisionRepository;
         this.employeeRepository = employeeRepository;
         this.benefitTypeRepository = benefitTypeRepository;
@@ -48,10 +48,12 @@ public class EmployeeBenefitProvisionService {
 
     public EmployeeBenefitProvision createProvision(EmployeeBenefitProvisionRequest request) {
         Employee employee = employeeRepository.findByEmployeeCode(request.getEmployeeCode())
-                .orElseThrow(() -> new EntityNotFoundException("Employee not found with code: " + request.getEmployeeCode()));
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Employee not found with code: " + request.getEmployeeCode()));
 
         BenefitType benefitType = benefitTypeRepository.findById(request.getBenefitTypeId())
-                .orElseThrow(() -> new EntityNotFoundException("BenefitType not found with id: " + request.getBenefitTypeId()));
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "BenefitType not found with id: " + request.getBenefitTypeId()));
 
         EmployeeBenefitProvision provision = new EmployeeBenefitProvision();
         provision.setEmployee(employee);
@@ -88,7 +90,8 @@ public class EmployeeBenefitProvisionService {
         }
 
         BenefitType benefitType = benefitTypeRepository.findById(request.getBenefitTypeId())
-                .orElseThrow(() -> new EntityNotFoundException("BenefitType not found with id: " + request.getBenefitTypeId()));
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "BenefitType not found with id: " + request.getBenefitTypeId()));
 
         provision.setBenefitType(benefitType);
         provision.setCycleStartDate(request.getCycleStartDate());
@@ -102,16 +105,19 @@ public class EmployeeBenefitProvisionService {
         provisionRepository.deleteById(id);
     }
 
-    public EmployeeBenefitProvision markAsPaidOut(Long provisionId, ProvisionPayoutRequest request, MultipartFile[] files) {
+    public EmployeeBenefitProvision markAsPaidOut(Long provisionId, ProvisionPayoutRequest request,
+            MultipartFile[] files) {
         EmployeeBenefitProvision provision = getProvisionById(provisionId);
         if (provision.getStatus() != ProvisionStatus.ACCRUING) {
-            throw new IllegalStateException("Provision can only be paid out from ACCRUING status. Current status: " + provision.getStatus());
+            throw new IllegalStateException(
+                    "Provision can only be paid out from ACCRUING status. Current status: " + provision.getStatus());
         }
 
         // Validate that the amount being paid out matches the accrued amount.
         // This prevents partial or incorrect payouts.
         if (provision.getAccruedAmount().compareTo(request.getPaidAmount()) != 0) {
-            throw new IllegalStateException("Paid amount (" + request.getPaidAmount() + ") does not match the accrued amount (" + provision.getAccruedAmount() + ").");
+            throw new IllegalStateException("Paid amount (" + request.getPaidAmount()
+                    + ") does not match the accrued amount (" + provision.getAccruedAmount() + ").");
         }
 
         if (files != null) {
@@ -136,7 +142,8 @@ public class EmployeeBenefitProvisionService {
     }
 
     public void cancelProvisionsForEmployee(Long employeeId) {
-        List<EmployeeBenefitProvision> accruingProvisions = provisionRepository.findByEmployeeIdAndStatus(employeeId, ProvisionStatus.ACCRUING);
+        List<EmployeeBenefitProvision> accruingProvisions = provisionRepository.findByEmployeeIdAndStatus(employeeId,
+                ProvisionStatus.ACCRUING);
         for (EmployeeBenefitProvision provision : accruingProvisions) {
             provision.setStatus(ProvisionStatus.CANCELLED);
             // Note: In a full accounting system, you would also create a journal entry
@@ -147,8 +154,10 @@ public class EmployeeBenefitProvisionService {
 
     public Resource loadConfirmationFile(Long provisionId) {
         EmployeeBenefitProvision provision = getProvisionById(provisionId);
-        // Assuming there's only one confirmation file for simplicity, or you need to specify which one
-        // This needs to be adapted if multiple files are possible and you want to retrieve a specific one.
+        // Assuming there's only one confirmation file for simplicity, or you need to
+        // specify which one
+        // This needs to be adapted if multiple files are possible and you want to
+        // retrieve a specific one.
         if (provision.getConfirmationFiles().isEmpty()) {
             throw new EntityNotFoundException("No confirmation file found for provision id: " + provisionId);
         }

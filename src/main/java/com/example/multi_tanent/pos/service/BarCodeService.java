@@ -5,11 +5,9 @@ import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
-import com.google.zxing.qrcode.QRCodeWriter;
+import com.google.zxing.MultiFormatWriter;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
@@ -33,59 +31,45 @@ public class BarCodeService {
      * @param height The height of the QR code image.
      * @return A byte array representing the QR code image in PNG format.
      * @throws WriterException If an error occurs during QR code generation.
-     * @throws IOException     If an error occurs while writing the image to the byte stream.
+     * @throws IOException     If an error occurs while writing the image to the
+     *                         byte stream.
      */
-    public byte[] generateQRCodeImage(String text, int width, int height) throws WriterException, IOException {
-        QRCodeWriter qrCodeWriter = new QRCodeWriter();
-        BitMatrix bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, width, height);
+    public byte[] generateBarcodeImage(String text, int width, int height) throws WriterException, IOException {
+        MultiFormatWriter writer = new MultiFormatWriter();
+        BitMatrix bitMatrix = writer.encode(text, BarcodeFormat.CODE_128, width, height);
 
-        ByteArrayOutputStream pngOutputStream = new ByteArrayOutputStream();
-        MatrixToImageWriter.writeToStream(bitMatrix, "PNG", pngOutputStream);
-        return pngOutputStream.toByteArray();
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        MatrixToImageWriter.writeToStream(bitMatrix, "JPEG", outputStream);
+        return outputStream.toByteArray();
     }
 
     /**
-     * Generates a QR code for a specific product variant.
-     * The QR code will contain a URL pointing to a public page for that variant.
-     *
-     * @param variant The ProductVariant entity.
-     * @param width   The desired width of the QR code image.
-     * @param height  The desired height of the QR code image.
-     * @return A byte array for the generated QR code image.
-     * @throws WriterException if the content cannot be encoded.
-     * @throws IOException if an I/O error occurs.
-     */
-    public byte[] generateProductVariantQRCode(ProductVariant variant, int width, int height) throws WriterException, IOException {
-        String url = buildPublicProductUrl(variant.getSku());
-        return generateQRCodeImage(url, width, height);
-    }
-
-    /**
-     * Generates a QR code for a product variant, saves it as an image file,
+     * Generates a barcode for a product variant, saves it as an image file,
      * and returns the relative path to the saved image.
      *
      * @param variant The ProductVariant entity.
-     * @return The relative path of the saved QR code image.
+     * @return The relative path of the saved barcode image.
      * @throws WriterException if the content cannot be encoded.
-     * @throws IOException if an I/O error occurs.
+     * @throws IOException     if an I/O error occurs.
      */
-    public String generateAndSaveProductVariantQRCode(ProductVariant variant) throws WriterException, IOException {
-        String url = buildPublicProductUrl(variant.getSku());
-        byte[] qrCodeImage = generateQRCodeImage(url, QR_CODE_WIDTH, QR_CODE_HEIGHT);
+    public String generateAndSaveProductVariantBarcode(ProductVariant variant) throws WriterException, IOException {
+        String barcodeText = variant.getBarcode();
+        System.out.println("DEBUG: generateAndSaveProductVariantBarcode called for variant: " + variant.getSku()
+                + ", Barcode: " + barcodeText);
 
-        String fileName = "qr-" + variant.getSku() + ".png";
-        // The file path returned by storeFile is relative (e.g., "tenant_id/barcodes/qr-code.png")
-        return fileStorageService.storeFile(qrCodeImage, fileName, "barcodes"); // Corrected method call
-    }
+        if (barcodeText == null || barcodeText.isEmpty()) {
+            throw new IllegalArgumentException("Barcode text is required to generate barcode image.");
+        }
 
-    /**
-     * Constructs a public-facing URL for a product variant using its SKU.
-     */
-    private String buildPublicProductUrl(String sku) {
-        // This will build a URL like: http://localhost:8080/public/products/by-sku/SKU123
-        return ServletUriComponentsBuilder.fromCurrentContextPath()
-                .path("/public/products/by-sku/{sku}")
-                .buildAndExpand(sku)
-                .toUriString();
+        byte[] barcodeImage = generateBarcodeImage(barcodeText, QR_CODE_WIDTH, 150); // Adjusted height for barcode
+
+        // Format: variant name + millisec + barcode.jpeg
+        String variantName = variant.getProduct().getName().replaceAll("\\s+", "_"); // Replace spaces for safety
+        String fileName = variantName + System.currentTimeMillis() + barcodeText + ".jpeg";
+        System.out.println("DEBUG: Generated filename: " + fileName);
+
+        String path = fileStorageService.storeFileWithCustomName(barcodeImage, fileName, "barcodes");
+        System.out.println("DEBUG: Stored barcode at path: " + path);
+        return path;
     }
 }

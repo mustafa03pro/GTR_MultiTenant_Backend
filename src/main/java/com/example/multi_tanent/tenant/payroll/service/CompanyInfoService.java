@@ -1,8 +1,8 @@
 package com.example.multi_tanent.tenant.payroll.service;
 
 import com.example.multi_tanent.config.TenantContext;
+import com.example.multi_tanent.spersusers.enitity.CompanyInfo;
 import com.example.multi_tanent.spersusers.enitity.Tenant;
-import com.example.multi_tanent.tenant.base.entity.CompanyInfo;
 import com.example.multi_tanent.tenant.payroll.dto.CompanyInfoRequest;
 import com.example.multi_tanent.spersusers.repository.TenantRepository;
 import com.example.multi_tanent.tenant.payroll.repository.CompanyInfoRepository;
@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-
 @Service
 @Transactional(transactionManager = "tenantTx")
 public class CompanyInfoService {
@@ -23,8 +22,8 @@ public class CompanyInfoService {
     private final TenantRepository tenantRepository;
 
     public CompanyInfoService(CompanyInfoRepository companyInfoRepository,
-                              FileStorageService fileStorageService,
-                              TenantRepository tenantRepository) {
+            FileStorageService fileStorageService,
+            TenantRepository tenantRepository) {
         this.companyInfoRepository = companyInfoRepository;
         this.fileStorageService = fileStorageService;
         this.tenantRepository = tenantRepository;
@@ -38,7 +37,8 @@ public class CompanyInfoService {
         // Find the first CompanyInfo record.
         CompanyInfo companyInfo = companyInfoRepository.findAll().stream().findFirst().orElse(null);
         if (companyInfo != null) {
-            // Explicitly initialize lazy-loaded collections within the transaction to prevent LazyInitializationException.
+            // Explicitly initialize lazy-loaded collections within the transaction to
+            // prevent LazyInitializationException.
             companyInfo.getLocations().size();
             companyInfo.getBankAccounts().size();
 
@@ -64,7 +64,8 @@ public class CompanyInfoService {
             // Set the tenant when creating for the first time
             String tenantIdStr = TenantContext.getTenantId();
             Tenant tenant = tenantRepository.findByTenantId(tenantIdStr)
-                    .orElseThrow(() -> new IllegalStateException("Cannot create CompanyInfo. Tenant not found with name: "));
+                    .orElseThrow(
+                            () -> new IllegalStateException("Cannot create CompanyInfo. Tenant not found with name: "));
             companyInfo.setTenant(tenant);
         }
         mapCompanyInfoRequestToEntity(request, companyInfo);
@@ -73,6 +74,7 @@ public class CompanyInfoService {
 
     /**
      * Uploads and sets the company logo.
+     * 
      * @param logoFile The logo file to upload.
      * @return The updated CompanyInfo entity.
      */

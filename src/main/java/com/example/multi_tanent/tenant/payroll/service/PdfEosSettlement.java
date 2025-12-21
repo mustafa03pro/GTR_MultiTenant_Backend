@@ -1,9 +1,9 @@
 package com.example.multi_tanent.tenant.payroll.service;
 
 import com.example.multi_tanent.spersusers.enums.ContractType;
+import com.example.multi_tanent.spersusers.enitity.CompanyInfo;
 import com.example.multi_tanent.spersusers.enitity.Employee;
 import com.example.multi_tanent.spersusers.enitity.Tenant;
-import com.example.multi_tanent.tenant.base.entity.CompanyInfo;
 import com.example.multi_tanent.tenant.employee.entity.JobDetails;
 import com.example.multi_tanent.tenant.payroll.dto.FinalSettlementPdfData;
 import com.example.multi_tanent.tenant.payroll.entity.EmployeeLoan;
@@ -63,15 +63,17 @@ public class PdfEosSettlement {
     private static final DateTimeFormatter DMY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public PdfEosSettlement(EmployeeLoanRepository employeeLoanRepository,
-                           FileStorageService fileStorageService) {
+            FileStorageService fileStorageService) {
         this.employeeLoanRepository = employeeLoanRepository;
         this.fileStorageService = fileStorageService;
         try {
             // You can replace the font with your preferred Latin/Arabic capable font.
             ClassPathResource fontRes = new ClassPathResource("fonts/NotoNaskhArabic-Regular.ttf");
             byte[] fontBytes = fontRes.getInputStream().readAllBytes();
-            this.regularFont = PdfFontFactory.createFont(fontBytes, PdfEncodings.IDENTITY_H, PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
-            this.boldFont = PdfFontFactory.createFont(fontBytes, PdfEncodings.IDENTITY_H, PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+            this.regularFont = PdfFontFactory.createFont(fontBytes, PdfEncodings.IDENTITY_H,
+                    PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+            this.boldFont = PdfFontFactory.createFont(fontBytes, PdfEncodings.IDENTITY_H,
+                    PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
         } catch (IOException e) {
             throw new RuntimeException("Failed to load fonts for PDF generation", e);
         }
@@ -81,24 +83,24 @@ public class PdfEosSettlement {
     public byte[] generate(FinalSettlementPdfData data) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (PdfWriter writer = new PdfWriter(baos);
-             PdfDocument pdf = new PdfDocument(writer);
-             Document doc = new Document(pdf, PageSize.A4)) {
+                PdfDocument pdf = new PdfDocument(writer);
+                Document doc = new Document(pdf, PageSize.A4)) {
 
             doc.setMargins(18, 22, 22, 22);
 
             addBrandRow(doc, data.getTenant());
             addTopTitle(doc, data.getCompanyInfo()); // grey band with statement title
 
-            addRefBand(doc, data);                   // ALHS055 … (your ref/number if any)
+            addRefBand(doc, data); // ALHS055 … (your ref/number if any)
             addCompanyTitle(doc, data.getCompanyInfo());
 
-            addTwoColumnInfoTable(doc, data);        // Date/Contract/Employee/Reason/Joining/Resign/Last day/Basic/Gross
+            addTwoColumnInfoTable(doc, data); // Date/Contract/Employee/Reason/Joining/Resign/Last day/Basic/Gross
 
-            addDescriptionBox(doc, data);            // large grid with A, B, Net rows
+            addDescriptionBox(doc, data); // large grid with A, B, Net rows
 
-            addAcknowledgement(doc, data);           // paragraph acknowledgement
+            addAcknowledgement(doc, data); // paragraph acknowledgement
 
-            addSignatureGrid(doc, data);             // signatures section
+            addSignatureGrid(doc, data); // signatures section
 
             addBottomStrip(doc, data.getCompanyInfo()); // footer contacts (simple)
 
@@ -112,7 +114,7 @@ public class PdfEosSettlement {
     // Header & branding
     // ------------------------------------------------------------
     private void addBrandRow(Document doc, Tenant tenant) {
-        Table brand = new Table(UnitValue.createPercentArray(new float[]{1, 1, 1}))
+        Table brand = new Table(UnitValue.createPercentArray(new float[] { 1, 1, 1 }))
                 .useAllAvailableWidth();
         brand.setBorder(Border.NO_BORDER);
         // Left logo (placeholder if none)
@@ -133,14 +135,16 @@ public class PdfEosSettlement {
                 img.setMaxHeight(34);
                 c.add(img);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         c.setHorizontalAlignment(align);
         return c;
     }
 
     private void addTopTitle(Document doc, CompanyInfo company) {
-        String school = company != null && company.getCompanyName() != null ? company.getCompanyName() : "School / Company";
-        Table t = new Table(UnitValue.createPercentArray(new float[]{1})).useAllAvailableWidth();
+        String school = company != null && company.getCompanyName() != null ? company.getCompanyName()
+                : "School / Company";
+        Table t = new Table(UnitValue.createPercentArray(new float[] { 1 })).useAllAvailableWidth();
         Cell title = new Cell()
                 .add(new Paragraph("Statement of End of Service (EOS) Dues")
                         .setFont(boldFont).setFontSize(12).setTextAlignment(TextAlignment.CENTER))
@@ -149,7 +153,8 @@ public class PdfEosSettlement {
                 .setPadding(6);
         t.addCell(title);
         Cell note = new Cell()
-                .add(new Paragraph("(The below EOS is payable subject to completion of clearance formalities and signing of the EOS certification)")
+                .add(new Paragraph(
+                        "(The below EOS is payable subject to completion of clearance formalities and signing of the EOS certification)")
                         .setFont(regularFont).setFontSize(8).setTextAlignment(TextAlignment.CENTER))
                 .setBorder(new SolidBorder(ColorConstants.BLACK, 0.8f))
                 .setPadding(4);
@@ -158,7 +163,7 @@ public class PdfEosSettlement {
     }
 
     private void addRefBand(Document doc, FinalSettlementPdfData data) {
-        Table band = new Table(UnitValue.createPercentArray(new float[]{1}))
+        Table band = new Table(UnitValue.createPercentArray(new float[] { 1 }))
                 .useAllAvailableWidth();
         band.addCell(new Cell()
                 .add(new Paragraph("Ref: " + safe(data.getEndOfService().getId(), "")))
@@ -170,9 +175,11 @@ public class PdfEosSettlement {
     }
 
     private void addCompanyTitle(Document doc, CompanyInfo company) {
-        String school = company != null && company.getCompanyName() != null ? company.getCompanyName() : "Your School Name";
-        Table t = new Table(UnitValue.createPercentArray(new float[]{1})).useAllAvailableWidth();
-        t.addCell(new Cell().add(new Paragraph(school).setFont(boldFont).setFontSize(11).setTextAlignment(TextAlignment.CENTER))
+        String school = company != null && company.getCompanyName() != null ? company.getCompanyName()
+                : "Your School Name";
+        Table t = new Table(UnitValue.createPercentArray(new float[] { 1 })).useAllAvailableWidth();
+        t.addCell(new Cell()
+                .add(new Paragraph(school).setFont(boldFont).setFontSize(11).setTextAlignment(TextAlignment.CENTER))
                 .setBorder(new SolidBorder(ColorConstants.BLACK, 0.8f))
                 .setPadding(5));
         doc.add(t);
@@ -186,22 +193,24 @@ public class PdfEosSettlement {
         Employee emp = eos.getEmployee();
         JobDetails jd = data.getJobDetails();
 
-        Table t = new Table(UnitValue.createPercentArray(new float[]{1.2f, .9f, .9f, 1.2f, .9f, .9f}))
+        Table t = new Table(UnitValue.createPercentArray(new float[] { 1.2f, .9f, .9f, 1.2f, .9f, .9f }))
                 .useAllAvailableWidth();
         t.setBorder(new SolidBorder(ColorConstants.BLACK, 0.8f));
 
         // Row 1
         t.addCell(headCell("Date of EOS Generation"));
-        t.addCell(valueCell(date(eos.getCalculatedAt() != null ? eos.getCalculatedAt().toLocalDate() : null, LocalDate.now())));
+        t.addCell(valueCell(
+                date(eos.getCalculatedAt() != null ? eos.getCalculatedAt().toLocalDate() : null, LocalDate.now())));
         t.addCell(headCell("Nature of Contract"));
         t.addCell(valueCell(safe(jd.getContractType()).toString()));
-        t.addCell(new Cell(1,2).setBorder(Border.NO_BORDER)); // filler
+        t.addCell(new Cell(1, 2).setBorder(Border.NO_BORDER)); // filler
 
         // Row 2
         t.addCell(headCell("Name of Employee"));
         t.addCell(valueCell(emp != null ? (safe(emp.getFirstName()) + " " + safe(emp.getLastName())) : ""));
         t.addCell(headCell("Reason for exit"));
-        // Cell reason = valueCell(safe(eos.getTerminationReason(), "Resignation").toString());
+        // Cell reason = valueCell(safe(eos.getTerminationReason(),
+        // "Resignation").toString());
         // reason.setBackgroundColor(GREEN_TAG);
         // t.addCell(reason);
         t.addCell(headCell("Basic Salary (p.m.)"));
@@ -215,7 +224,8 @@ public class PdfEosSettlement {
         t.addCell(valueCell(date(eos.getLastWorkingDay(), null)));
         t.addCell(headCell("Gross Salary (p.m.)"));
         // Gross salary is not stored on EOS. Placeholder for now.
-        // To implement this, you'd need to add lastGrossSalary to the EndOfService entity.
+        // To implement this, you'd need to add lastGrossSalary to the EndOfService
+        // entity.
         t.addCell(amountCell(null));
 
         // Row 4
@@ -247,14 +257,14 @@ public class PdfEosSettlement {
         BigDecimal net = totalA.subtract(totalB);
 
         // Top header row ("Description", "Amount")
-        Table outer = new Table(UnitValue.createPercentArray(new float[]{1})).useAllAvailableWidth();
+        Table outer = new Table(UnitValue.createPercentArray(new float[] { 1 })).useAllAvailableWidth();
         outer.setBorder(new SolidBorder(ColorConstants.BLACK, 0.8f));
         outer.addCell(new Cell().add(new Paragraph("Description").setFont(boldFont).setFontSize(10))
                 .setBorderBottom(new SolidBorder(ColorConstants.BLACK, 0.8f))
                 .setPadding(6));
 
         // Inner grid
-        Table grid = new Table(UnitValue.createPercentArray(new float[]{3, 1}))
+        Table grid = new Table(UnitValue.createPercentArray(new float[] { 3, 1 }))
                 .useAllAvailableWidth();
 
         // Section: End of Service Entitlements / Calculation
@@ -299,12 +309,13 @@ public class PdfEosSettlement {
         CompanyInfo company = data.getCompanyInfo();
         Employee emp = eos.getEmployee();
 
-        String companyName = company != null && company.getCompanyName() != null ? company.getCompanyName() : "the School";
+        String companyName = company != null && company.getCompanyName() != null ? company.getCompanyName()
+                : "the School";
         String employeeName = emp != null ? (safe(emp.getFirstName()) + " " + safe(emp.getLastName())) : "I";
         String start = date(eos.getJoiningDate(), null);
         String end = date(eos.getLastWorkingDay(), null);
 
-        Table t = new Table(UnitValue.createPercentArray(new float[]{1}))
+        Table t = new Table(UnitValue.createPercentArray(new float[] { 1 }))
                 .useAllAvailableWidth();
         t.addCell(new Cell()
                 .add(new Paragraph("Certificate of Acknowledgement of End of Service Dues")
@@ -321,8 +332,7 @@ public class PdfEosSettlement {
                         + "benefits, unpaid leave salary, other allowances and all other benefits accrued as per the Terms of my Employment "
                         + "contract. I further certify that I have thoroughly checked the calculations of the above amount and am satisfied "
                         + "and do not have any disagreement on the same.",
-                employeeName, companyName, start, end
-        );
+                employeeName, companyName, start, end);
 
         t.addCell(new Cell()
                 .add(new Paragraph(body).setFont(regularFont).setFontSize(9).setFixedLeading(12))
@@ -338,12 +348,13 @@ public class PdfEosSettlement {
         EndOfService eos = data.getEndOfService();
         Employee emp = eos.getEmployee();
 
-        Table t = new Table(UnitValue.createPercentArray(new float[]{1, 1}))
+        Table t = new Table(UnitValue.createPercentArray(new float[] { 1, 1 }))
                 .useAllAvailableWidth();
         t.setBorder(new SolidBorder(ColorConstants.BLACK, 0.8f));
 
         // Row 1
-        t.addCell(sigCell("Employee Name: ", emp != null ? (safe(emp.getFirstName()) + " " + safe(emp.getLastName())) : ""));
+        t.addCell(sigCell("Employee Name: ",
+                emp != null ? (safe(emp.getFirstName()) + " " + safe(emp.getLastName())) : ""));
         t.addCell(sigCell("Employee Signature: ", ""));
 
         // Row 2
@@ -451,7 +462,7 @@ public class PdfEosSettlement {
 
     private Cell totalAmount(BigDecimal v, Color bg) {
         return new Cell().add(new Paragraph(v == null ? "" : String.format("%,.2f", v))
-                        .setFont(boldFont).setFontSize(10).setTextAlignment(TextAlignment.RIGHT))
+                .setFont(boldFont).setFontSize(10).setTextAlignment(TextAlignment.RIGHT))
                 .setBackgroundColor(bg)
                 .setBorder(new SolidBorder(ColorConstants.BLACK, 0.8f))
                 .setPadding(6);
@@ -468,18 +479,32 @@ public class PdfEosSettlement {
         return v == null ? "" : v.format(DMY);
     }
 
-    private String safe(Object s) { return s == null ? "" : String.valueOf(s); }
-    private String safe(Object s, String def) { return s == null ? def : String.valueOf(s); }
-    private String nullToEmpty(String s) { return s == null ? "" : s; }
+    private String safe(Object s) {
+        return s == null ? "" : String.valueOf(s);
+    }
 
-    private BigDecimal nvl(BigDecimal b) { return b == null ? BigDecimal.ZERO : b; }
+    private String safe(Object s, String def) {
+        return s == null ? def : String.valueOf(s);
+    }
+
+    private String nullToEmpty(String s) {
+        return s == null ? "" : s;
+    }
+
+    private BigDecimal nvl(BigDecimal b) {
+        return b == null ? BigDecimal.ZERO : b;
+    }
 
     private BigDecimal outstandingLoan(EndOfService eos) {
-        if (eos == null || eos.getEmployee() == null || eos.getEmployee().getId() == null) return BigDecimal.ZERO;
-        Optional<EmployeeLoan> loanOpt = employeeLoanRepository.findByEmployeeIdAndStatus(eos.getEmployee().getId(), LoanStatus.APPROVED);
-        if (loanOpt.isEmpty()) return BigDecimal.ZERO;
+        if (eos == null || eos.getEmployee() == null || eos.getEmployee().getId() == null)
+            return BigDecimal.ZERO;
+        Optional<EmployeeLoan> loanOpt = employeeLoanRepository.findByEmployeeIdAndStatus(eos.getEmployee().getId(),
+                LoanStatus.APPROVED);
+        if (loanOpt.isEmpty())
+            return BigDecimal.ZERO;
         EmployeeLoan loan = loanOpt.get();
-        if (loan.getEmiAmount() == null || loan.getRemainingInstallments() == null) return BigDecimal.ZERO;
+        if (loan.getEmiAmount() == null || loan.getRemainingInstallments() == null)
+            return BigDecimal.ZERO;
         return loan.getEmiAmount().multiply(BigDecimal.valueOf(loan.getRemainingInstallments()));
     }
 }

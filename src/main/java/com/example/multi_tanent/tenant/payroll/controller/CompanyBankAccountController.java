@@ -1,6 +1,6 @@
 package com.example.multi_tanent.tenant.payroll.controller;
 
-import com.example.multi_tanent.tenant.base.entity.CompanyBankAccount;
+import com.example.multi_tanent.spersusers.enitity.CompanyBankAccount;
 import com.example.multi_tanent.tenant.payroll.dto.CompanyBankAccountRequest;
 import com.example.multi_tanent.tenant.payroll.dto.CompanyBankAccountResponse;
 import com.example.multi_tanent.tenant.payroll.service.CompanyBankAccountService;
@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/company-bank-accounts")
 @CrossOrigin(origins = "*")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','HRMS_ADMIN','HR','MANAGER')")
+@PreAuthorize("hasAnyRole('SUPER_ADMIN','HRMS_ADMIN','HR','MANAGER')")
 public class CompanyBankAccountController {
 
     private final CompanyBankAccountService bankAccountService;
@@ -34,7 +34,8 @@ public class CompanyBankAccountController {
     }
 
     @PostMapping
-    public ResponseEntity<CompanyBankAccountResponse> createBankAccount(@RequestBody CompanyBankAccountRequest request) {
+    public ResponseEntity<CompanyBankAccountResponse> createBankAccount(
+            @RequestBody CompanyBankAccountRequest request) {
         CompanyBankAccount createdAccount = bankAccountService.createBankAccount(request);
         URI locationUri = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}")
                 .buildAndExpand(createdAccount.getId()).toUri();
@@ -42,8 +43,10 @@ public class CompanyBankAccountController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<CompanyBankAccountResponse> updateBankAccount(@PathVariable Long id, @RequestBody CompanyBankAccountRequest request) {
-        return ResponseEntity.ok(CompanyBankAccountResponse.fromEntity(bankAccountService.updateBankAccount(id, request)));
+    public ResponseEntity<CompanyBankAccountResponse> updateBankAccount(@PathVariable Long id,
+            @RequestBody CompanyBankAccountRequest request) {
+        return ResponseEntity
+                .ok(CompanyBankAccountResponse.fromEntity(bankAccountService.updateBankAccount(id, request)));
     }
 
     @DeleteMapping("/{id}")

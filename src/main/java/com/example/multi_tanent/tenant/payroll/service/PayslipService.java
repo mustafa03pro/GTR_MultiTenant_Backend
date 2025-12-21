@@ -1,6 +1,6 @@
 package com.example.multi_tanent.tenant.payroll.service;
 
-import com.example.multi_tanent.tenant.base.entity.CompanyInfo;
+import com.example.multi_tanent.spersusers.enitity.CompanyInfo;
 import com.example.multi_tanent.tenant.employee.entity.EmployeeProfile;
 import com.example.multi_tanent.tenant.employee.entity.JobDetails;
 import com.example.multi_tanent.tenant.employee.repository.EmployeeProfileRepository;
@@ -26,9 +26,9 @@ public class PayslipService {
     private final EmployeeProfileRepository employeeProfileRepository;
 
     public PayslipService(PayslipRepository payslipRepository,
-                          CompanyInfoService companyInfoService,
-                          JobDetailsRepository jobDetailsRepository,
-                          EmployeeProfileRepository employeeProfileRepository) {
+            CompanyInfoService companyInfoService,
+            JobDetailsRepository jobDetailsRepository,
+            EmployeeProfileRepository employeeProfileRepository) {
         this.payslipRepository = payslipRepository;
         this.companyInfoService = companyInfoService;
         this.jobDetailsRepository = jobDetailsRepository;
@@ -43,7 +43,8 @@ public class PayslipService {
     }
 
     public Optional<Payslip> getPayslipById(Long id) {
-        // Use the new query to fetch everything in one go, preventing LazyInitializationException
+        // Use the new query to fetch everything in one go, preventing
+        // LazyInitializationException
         Optional<Payslip> payslipOpt = payslipRepository.findByIdWithDetails(id);
         return payslipOpt;
     }
@@ -54,7 +55,8 @@ public class PayslipService {
 
             CompanyInfo companyInfo = companyInfoService.getCompanyInfo();
             if (companyInfo == null) {
-                throw new IllegalStateException("Company Information is not configured for this tenant. Please set it up before generating payslips.");
+                throw new IllegalStateException(
+                        "Company Information is not configured for this tenant. Please set it up before generating payslips.");
             }
 
             JobDetails jobDetails = jobDetailsRepository.findByEmployeeId(employeeId)
@@ -73,12 +75,15 @@ public class PayslipService {
     }
 
     /**
-     * Initializes lazy-loaded associations of a Payslip entity to prevent LazyInitializationException.
+     * Initializes lazy-loaded associations of a Payslip entity to prevent
+     * LazyInitializationException.
      * This should be called within a @Transactional context.
+     * 
      * @param payslip The Payslip entity to initialize.
      */
     private void initializePayslipDetails(Payslip payslip) {
-        if (payslip == null) return;
+        if (payslip == null)
+            return;
 
         // Initialize the Employee proxy by accessing a property
         if (payslip.getEmployee() != null) {

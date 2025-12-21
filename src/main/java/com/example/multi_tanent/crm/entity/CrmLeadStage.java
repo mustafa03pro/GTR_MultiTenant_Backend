@@ -7,7 +7,7 @@ import lombok.*;
 
 @Entity
 @Table(name = "crm_lead_stages", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"tenant_id", "name"})
+        @UniqueConstraint(columnNames = { "tenant_id", "name" })
 })
 @Getter
 @Setter
@@ -36,4 +36,6 @@ public class CrmLeadStage {
 
     @Column(nullable = false)
     private boolean isDefault = false;
+
+    private String moveTo;
 }

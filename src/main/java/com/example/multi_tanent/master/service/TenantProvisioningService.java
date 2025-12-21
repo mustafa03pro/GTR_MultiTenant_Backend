@@ -59,7 +59,8 @@ public class TenantProvisioningService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    @Transactional
+    // @Transactional - Removed to ensure masterTenant is saved even if schema
+    // creation fails
     public void provision(ProvisionTenantRequest req) {
         // 1) Validate & normalize tenantId -> safe schema name like tenant_<id>
         String tenantId = normalizeTenantId(req.tenantId());
@@ -143,6 +144,7 @@ public class TenantProvisioningService {
             Properties p = new Properties();
             p.put("hibernate.hbm2ddl.auto", "none");
             p.put("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
+            p.put("hibernate.show_sql", "true");
             emfBean.setJpaProperties(p);
             emfBean.afterPropertiesSet();
 
@@ -175,7 +177,8 @@ public class TenantProvisioningService {
         // fresh DB.
         p.put("hibernate.hbm2ddl.auto", "create");
         p.put("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
-        p.put("hibernate.globally_quoted_identifiers", "true"); // Helps with reserved keywords and case sensitivity
+        // p.put("hibernate.globally_quoted_identifiers", "true"); // Helps with
+        // reserved keywords and case sensitivity
         emfBean.setJpaProperties(p);
         emfBean.afterPropertiesSet();
         emfBean.destroy(); // This triggers schema creation/update and then closes the factory.

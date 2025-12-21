@@ -15,4 +15,6 @@ public class CrmLeadStageResponse {
     private String locationName;
 
     private Long tenantId;
+
+    private String moveTo;
 }

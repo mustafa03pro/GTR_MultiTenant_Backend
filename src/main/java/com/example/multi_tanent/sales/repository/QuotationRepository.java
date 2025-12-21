@@ -9,8 +9,11 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface QuotationRepository extends JpaRepository<Quotation, Long> {
+public interface QuotationRepository extends JpaRepository<Quotation, Long>,
+        org.springframework.data.jpa.repository.JpaSpecificationExecutor<Quotation> {
     Page<Quotation> findByTenantId(Long tenantId, Pageable pageable);
 
     Optional<Quotation> findByIdAndTenantId(Long id, Long tenantId);
+
+    Optional<Quotation> findByQuotationNumberAndTenantId(String quotationNumber, Long tenantId);
 }

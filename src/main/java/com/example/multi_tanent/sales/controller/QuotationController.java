@@ -41,8 +41,27 @@ public class QuotationController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<QuotationResponse>> getAllQuotations(@PageableDefault(size = 10) Pageable pageable) {
-        return ResponseEntity.ok(quotationService.getAllQuotations(pageable));
+    public ResponseEntity<Page<QuotationResponse>> getAllQuotations(
+            @RequestParam(required = false) String customerName,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate startDate,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate endDate,
+            @RequestParam(required = false) String quotationType,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Long salespersonId,
+            @PageableDefault(size = 10) Pageable pageable) {
+
+        SalesStatus statusEnum = null;
+        if (status != null && !status.isEmpty() && !"All".equalsIgnoreCase(status)) {
+            try {
+                statusEnum = SalesStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // ignore invalid status
+            }
+        }
+
+        return ResponseEntity
+                .ok(quotationService.getAllQuotations(customerName, startDate, endDate, quotationType, statusEnum,
+                        salespersonId, pageable));
     }
 
     @DeleteMapping("/{id}")
@@ -51,9 +70,18 @@ public class QuotationController {
         return ResponseEntity.noContent().build();
     }
 
-    @PatchMapping("/{id}/status")
+    @RequestMapping(value = "/{id}/status", method = { RequestMethod.PATCH, RequestMethod.POST, RequestMethod.PUT })
     public ResponseEntity<QuotationResponse> updateStatus(@PathVariable Long id, @RequestParam SalesStatus status) {
         return ResponseEntity.ok(quotationService.updateStatus(id, status));
+    }
+
+    @RequestMapping(value = { "/status-by-number", "/status/by-number" }, method = { RequestMethod.PATCH,
+            RequestMethod.POST,
+            RequestMethod.PUT })
+    public ResponseEntity<QuotationResponse> updateStatusByNumber(
+            @RequestParam String quotationNumber,
+            @RequestParam SalesStatus status) {
+        return ResponseEntity.ok(quotationService.updateStatusByNumber(quotationNumber, status));
     }
 
     @GetMapping("/{id}/pdf")

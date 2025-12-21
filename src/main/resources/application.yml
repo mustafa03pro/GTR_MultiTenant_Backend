@@ -1,20 +1,23 @@
+# jdbc:mysql://209.209.40.85:19783/master_db
+# admin
+# gqa6vDtX
 master:
   datasource:
-    url: jdbc:mysql://209.209.40.85:19783/master_db
-    username: admin
-    password: gqa6vDtX
+    url: jdbc:mysql://localhost:3306/master_db
+    username: root
+    password: mustafa123@
 
 provisioning:
   datasource:
-    host: "209.209.40.85"
-    username: admin
-    password: gqa6vDtX
-    port: "19783"
+    host: 108.181.197.152
+    username: root
+    password: mustafa123@
+    port: "3306"
 
 spring:
   jpa:
     defer-datasource-initialization: true
-    open-in-view: false
+    open-in-view: true
     show-sql: true
   sql:
     init:
@@ -50,3 +53,45 @@ server:
 # jdbc:mysql://209.209.40.85:19783/master_db
 # admin
 # gqa6vDtX
+
+# master:
+#   datasource:
+#     url: jdbc:mysql://108.181.197.152:16319/master_db
+#     username: admin
+#     password: AUTODoxj
+
+# provisioning:
+#   datasource:
+#     host: 108.181.197.152
+#     username: admin
+#     password: AUTODoxj
+#     port: 16319
+
+
+
+# master:
+#   datasource:
+#     url: jdbc:mysql://localhost:3306/master_db
+#     username: root
+#     password: mustafa123@
+
+# provisioning:
+#   datasource:
+#     host: 108.181.197.152
+#     username: root
+#     password: mustafa123@
+#     port: "3306"
+
+
+# master:
+#   datasource:
+#     url: jdbc:mysql://108.181.197.152:16319/master_db
+#     username: admin
+#     password: AUTODoxj
+
+# provisioning:
+#   datasource:
+#     host: 108.181.197.152
+#     username: admin
+#     password: AUTODoxj
+#     port: 16319

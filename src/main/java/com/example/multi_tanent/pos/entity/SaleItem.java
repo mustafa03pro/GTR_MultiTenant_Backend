@@ -26,6 +26,8 @@ public class SaleItem {
     @JsonIgnore
     private ProductVariant productVariant;
 
+    private Long costCents;
+
     private Long quantity;
 
     private Long unitPriceCents;

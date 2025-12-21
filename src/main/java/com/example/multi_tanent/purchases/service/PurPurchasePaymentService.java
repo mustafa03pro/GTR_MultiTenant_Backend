@@ -84,7 +84,38 @@ public class PurPurchasePaymentService {
 
         // Handle new file uploads
         if (files != null && files.length > 0) {
-            String subDir = "purchase_payments"; // Folder to store payment attachments
+            // We can reuse attachFiles logic or inline it to associate with p before save
+            // if needed,
+            // but attachFiles does repo.save(p) at the end.
+            // Since p is new and not saved yet, we should associate entities first or save
+            // p first.
+            // Let's save p first, then attach.
+        }
+
+        // compute simple derived fields (sum of allocations)
+        recomputePaymentFields(p);
+
+        PurPurchasePayment saved = repo.save(p);
+
+        if (files != null && files.length > 0) {
+            attachFiles(saved.getId(), files, req.getCreatedBy());
+            // Reload to get attachments in response? attachFiles returns URLs, but we want
+            // full response.
+            // attachFiles saves updates.
+            return getById(saved.getId());
+        }
+
+        return toResponse(saved);
+    }
+
+    public List<String> attachFiles(Long id, MultipartFile[] files, String uploadedBy) {
+        Tenant t = currentTenant();
+        PurPurchasePayment p = repo.findByIdAndTenantId(id, t.getId())
+                .orElseThrow(() -> new EntityNotFoundException("Purchase payment not found: " + id));
+
+        List<String> uploadedUrls = new ArrayList<>();
+        if (files != null && files.length > 0) {
+            String subDir = "purchase_payments";
             for (MultipartFile file : files) {
                 if (file.isEmpty())
                     continue;
@@ -93,17 +124,14 @@ public class PurPurchasePaymentService {
                 PurPurchasePaymentAttachment a = new PurPurchasePaymentAttachment();
                 a.setFileName(file.getOriginalFilename());
                 a.setFilePath(relativePath);
-                a.setUploadedBy(req.getCreatedBy());
+                a.setUploadedBy(uploadedBy);
                 a.setUploadedAt(LocalDateTime.now());
                 p.addAttachment(a);
+                uploadedUrls.add(fileStorageService.buildPublicUrl(relativePath));
             }
+            repo.save(p);
         }
-
-        // compute simple derived fields (sum of allocations)
-        recomputePaymentFields(p);
-
-        PurPurchasePayment saved = repo.save(p);
-        return toResponse(saved);
+        return uploadedUrls;
     }
 
     @Transactional(readOnly = true)

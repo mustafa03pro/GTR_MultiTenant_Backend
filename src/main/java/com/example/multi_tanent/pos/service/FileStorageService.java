@@ -101,13 +101,39 @@ public class FileStorageService {
         }
     }
 
+    public String storeFileWithCustomName(byte[] fileBytes, String customFileName, String subfolder) {
+        String cleanFileName = StringUtils.cleanPath(customFileName);
+
+        try {
+            if (cleanFileName.contains("..")) {
+                throw new RuntimeException("Sorry! Filename contains invalid path sequence " + cleanFileName);
+            }
+
+            String tenantId = TenantContext.getTenantId();
+            if (tenantId == null) {
+                throw new IllegalStateException("Tenant context is not set. Cannot upload file.");
+            }
+
+            Path targetLocation = this.fileStorageLocation.resolve(tenantId).resolve(subfolder);
+            Files.createDirectories(targetLocation);
+            Path filePath = targetLocation.resolve(cleanFileName);
+            Files.copy(new ByteArrayInputStream(fileBytes), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+            return Paths.get(tenantId, subfolder, cleanFileName).toString().replace("\\", "/");
+        } catch (IOException ex) {
+            throw new RuntimeException("Could not store file " + cleanFileName + ". Please try again!", ex);
+        }
+    }
+
     /**
-     * Stores a file in a public location that is not tied to a specific tenant's subfolder.
+     * Stores a file in a public location that is not tied to a specific tenant's
+     * subfolder.
      * This is useful for shared assets like tenant logos.
      *
-     * @param fileBytes The byte array of the file to store.
+     * @param fileBytes        The byte array of the file to store.
      * @param originalFileName The original name of the file.
-     * @param subfolder The public subfolder to store the file in (e.g., "tenant-assets/logos").
+     * @param subfolder        The public subfolder to store the file in (e.g.,
+     *                         "tenant-assets/logos").
      * @return The relative path to the stored file.
      */
     public String storePublicFile(byte[] fileBytes, String originalFileName, String subfolder) {

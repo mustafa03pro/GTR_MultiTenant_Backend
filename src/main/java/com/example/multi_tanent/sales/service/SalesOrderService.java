@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(transactionManager = "tenantTx")
 public class SalesOrderService {
 
     private final SalesOrderRepository salesOrderRepository;
@@ -44,7 +45,7 @@ public class SalesOrderService {
     private final com.example.multi_tanent.tenant.service.FileStorageService fileStorageService;
     private final com.example.multi_tanent.sales.repository.QuotationRepository quotationRepository;
 
-    @Transactional
+    @Transactional(transactionManager = "tenantTx")
     public SalesOrderResponse createSalesOrder(SalesOrderRequest request,
             org.springframework.web.multipart.MultipartFile[] attachments) {
         String tenantIdentifier = TenantContext.getTenantId();
@@ -77,7 +78,7 @@ public class SalesOrderService {
         return mapEntityToResponse(savedSalesOrder);
     }
 
-    @Transactional
+    @Transactional(transactionManager = "tenantTx")
     public SalesOrderResponse updateSalesOrder(Long id, SalesOrderRequest request,
             org.springframework.web.multipart.MultipartFile[] attachments) {
         String tenantIdentifier = TenantContext.getTenantId();
@@ -110,7 +111,7 @@ public class SalesOrderService {
         return mapEntityToResponse(updatedSalesOrder);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, transactionManager = "tenantTx")
     public SalesOrderResponse getSalesOrderById(Long id) {
         String tenantIdentifier = TenantContext.getTenantId();
         Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)
@@ -122,17 +123,42 @@ public class SalesOrderService {
         return mapEntityToResponse(salesOrder);
     }
 
-    @Transactional(readOnly = true)
-    public Page<SalesOrderResponse> getAllSalesOrders(Pageable pageable) {
+    @Transactional(readOnly = true, transactionManager = "tenantTx")
+    public Page<SalesOrderResponse> getAllSalesOrders(String customerName, java.time.LocalDate startDate,
+            java.time.LocalDate endDate, SalesStatus status, Long salespersonId, Pageable pageable) {
         String tenantIdentifier = TenantContext.getTenantId();
         Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)
                 .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
-        return salesOrderRepository.findByTenantId(tenant.getId(), pageable)
+        org.springframework.data.jpa.domain.Specification<SalesOrder> spec = (root, query, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("tenant").get("id"), tenant.getId()));
+
+            if (customerName != null && !customerName.isEmpty()) {
+                predicates.add(cb.like(cb.lower(root.get("customer").get("companyName")),
+                        "%" + customerName.toLowerCase() + "%"));
+            }
+            if (startDate != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("salesOrderDate"), startDate));
+            }
+            if (endDate != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("salesOrderDate"), endDate));
+            }
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+            if (salespersonId != null) {
+                predicates.add(cb.equal(root.get("salesperson").get("id"), salespersonId));
+            }
+
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+
+        return salesOrderRepository.findAll(spec, pageable)
                 .map(this::mapEntityToResponse);
     }
 
-    @Transactional
+    @Transactional(transactionManager = "tenantTx")
     public void deleteSalesOrder(Long id) {
         String tenantIdentifier = TenantContext.getTenantId();
         Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)
@@ -144,7 +170,7 @@ public class SalesOrderService {
         salesOrderRepository.delete(salesOrder);
     }
 
-    @Transactional
+    @Transactional(transactionManager = "tenantTx")
     public SalesOrderResponse updateStatus(Long id, SalesStatus status) {
         String tenantIdentifier = TenantContext.getTenantId();
         Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)
@@ -158,7 +184,22 @@ public class SalesOrderService {
         return mapEntityToResponse(updatedSalesOrder);
     }
 
-    @Transactional
+    @Transactional(transactionManager = "tenantTx")
+    public SalesOrderResponse updateStatusByNumber(String salesOrderNumber, SalesStatus status) {
+        String tenantIdentifier = TenantContext.getTenantId();
+        Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+
+        SalesOrder salesOrder = salesOrderRepository.findBySalesOrderNumberAndTenantId(salesOrderNumber, tenant.getId())
+                .orElseThrow(
+                        () -> new EntityNotFoundException("Sales Order not found with number: " + salesOrderNumber));
+
+        salesOrder.setStatus(status);
+        SalesOrder updatedSalesOrder = salesOrderRepository.save(salesOrder);
+        return mapEntityToResponse(updatedSalesOrder);
+    }
+
+    @Transactional(transactionManager = "tenantTx")
     public SalesOrderResponse createSalesOrderFromQuotation(Long quotationId) {
         String tenantIdentifier = TenantContext.getTenantId();
         Tenant tenant = tenantRepository.findByTenantId(tenantIdentifier)

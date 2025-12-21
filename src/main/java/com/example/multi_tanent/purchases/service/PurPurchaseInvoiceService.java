@@ -353,6 +353,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -371,6 +373,7 @@ public class PurPurchaseInvoiceService {
     private final ProCategoryRepository categoryRepo;
     private final ProSubCategoryRepository subCategoryRepo;
     private final FileStorageService fileStorageService;
+    private final PurPurchasePaymentService paymentService;
 
     private Tenant currentTenant() {
         String key = TenantContext.getTenantId();
@@ -756,23 +759,48 @@ public class PurPurchaseInvoiceService {
                 }).collect(Collectors.toList());
         rb.lines(lines);
 
-        List<PurPurchaseInvoiceAttachmentResponse> atts;
-        if (inv.getAttachments() != null) {
-            atts = inv.getAttachments().stream()
-                    .map(a -> PurPurchaseInvoiceAttachmentResponse.builder()
-                            .id(a.getId())
-                            .fileName(a.getFileName())
-                            .filePath(a.getFilePath())
-                            .uploadedBy(a.getUploadedBy())
-                            .uploadedAt(a.getUploadedAt())
-                            .url(fileStorageService.buildPublicUrl(a.getFilePath()))
-                            .build())
-                    .collect(Collectors.toList());
-        } else {
-            atts = Collections.emptyList();
-        }
+        List<PurPurchaseInvoiceAttachmentResponse> atts = Optional.ofNullable(inv.getAttachments())
+                .orElse(Collections.emptyList())
+                .stream().map(a -> PurPurchaseInvoiceAttachmentResponse.builder()
+                        .id(a.getId())
+                        .fileName(a.getFileName())
+                        .filePath(a.getFilePath())
+                        .uploadedBy(a.getUploadedBy())
+                        .uploadedAt(a.getUploadedAt())
+                        .url(fileStorageService.buildPublicUrl(a.getFilePath()))
+                        .build())
+                .collect(Collectors.toList());
         rb.attachments(atts);
 
         return rb.build();
+    }
+
+    @Transactional
+    public PurPurchasePaymentResponse convertToPayment(Long id) {
+        Tenant t = currentTenant();
+        PurPurchaseInvoice inv = repo.findByIdAndTenantId(id, t.getId())
+                .orElseThrow(() -> new EntityNotFoundException("Purchase invoice not found: " + id));
+
+        PurPurchasePaymentRequest req = new PurPurchasePaymentRequest();
+        if (inv.getSupplier() != null) {
+            req.setSupplierId(inv.getSupplier().getId());
+        }
+
+        // Default amount to Invoice Net Total (or Gross if Net is missing/zero, though
+        // Net is usually set)
+        BigDecimal amount = Optional.ofNullable(inv.getNetTotal())
+                .filter(a -> a.compareTo(BigDecimal.ZERO) > 0)
+                .orElse(Optional.ofNullable(inv.getGrossTotal()).orElse(BigDecimal.ZERO));
+
+        req.setAmount(amount);
+        req.setPaymentDate(LocalDate.now());
+        req.setReference("Payment for Bill: " + inv.getBillNumber());
+        req.setCreatedBy(inv.getCreatedBy());
+
+        // Note: Automatic allocation to this invoice could be done here if
+        // PaymentService supports it.
+        // For now, simple creation.
+
+        return paymentService.create(req, null);
     }
 }
