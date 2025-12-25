@@ -3,6 +3,7 @@ package com.example.multi_tanent.tenant.employee.controller;
 import com.example.multi_tanent.tenant.employee.dto.EmployeeDocumentRequest;
 import com.example.multi_tanent.tenant.employee.entity.EmployeeDocument;
 import com.example.multi_tanent.tenant.employee.service.EmployeeDocumentService;
+import com.example.multi_tanent.tenant.reports.service.HrmsReportService;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -31,20 +32,22 @@ public class EmployeeDocumentController {
     private final EmployeeDocumentService documentService;
     private static final Logger logger = LoggerFactory.getLogger(EmployeeDocumentController.class);
 
-    public EmployeeDocumentController(EmployeeDocumentService documentService) {
-        this.documentService = documentService;
-    }
+    private final HrmsReportService hrmsReportService;
 
+    public EmployeeDocumentController(EmployeeDocumentService documentService, HrmsReportService hrmsReportService) {
+        this.documentService = documentService;
+        this.hrmsReportService = hrmsReportService;
+    }
 
     @PostMapping(path = "/{employeeCode}/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','HRMS_ADMIN','HR','MANAGER')")
     public ResponseEntity<EmployeeDocument> uploadDocument(@PathVariable String employeeCode,
-                                                           @RequestParam("file") MultipartFile file,
-                                                           @RequestParam("docTypeId") Long docTypeId,
-                                                           @RequestParam(value = "documentId", required = false) String documentId,
-                                                           @RequestParam(value = "registrationDate", required = false) LocalDate registrationDate,
-                                                           @RequestParam(value = "endDate", required = false) LocalDate endDate,
-                                                           @RequestParam(value = "remarks", required = false) String remarks) {
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("docTypeId") Long docTypeId,
+            @RequestParam(value = "documentId", required = false) String documentId,
+            @RequestParam(value = "registrationDate", required = false) LocalDate registrationDate,
+            @RequestParam(value = "endDate", required = false) LocalDate endDate,
+            @RequestParam(value = "remarks", required = false) String remarks) {
         EmployeeDocument savedDoc = documentService.storeDocument(file, employeeCode, docTypeId, documentId,
                 registrationDate, endDate, remarks);
 
@@ -85,7 +88,8 @@ public class EmployeeDocumentController {
 
                     return ResponseEntity.ok()
                             .contentType(MediaType.parseMediaType(contentType))
-                            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                            .header(HttpHeaders.CONTENT_DISPOSITION,
+                                    "attachment; filename=\"" + resource.getFilename() + "\"")
                             .body(resource);
                 })
                 .orElse(ResponseEntity.notFound().build());
@@ -110,7 +114,8 @@ public class EmployeeDocumentController {
 
                     return ResponseEntity.ok()
                             .contentType(MediaType.parseMediaType(contentType))
-                            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                            .header(HttpHeaders.CONTENT_DISPOSITION,
+                                    "inline; filename=\"" + resource.getFilename() + "\"")
                             .body(resource);
                 })
                 .orElse(ResponseEntity.notFound().build());
@@ -118,7 +123,8 @@ public class EmployeeDocumentController {
 
     @PutMapping("/{documentId}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','HRMS_ADMIN','HR','MANAGER')")
-    public ResponseEntity<EmployeeDocument> updateDocumentDetails(@PathVariable Long documentId, @RequestBody EmployeeDocumentRequest request) {
+    public ResponseEntity<EmployeeDocument> updateDocumentDetails(@PathVariable Long documentId,
+            @RequestBody EmployeeDocumentRequest request) {
         EmployeeDocument updatedDoc = documentService.updateDocumentDetails(documentId, request.getDocTypeId(),
                 request.getDocumentId(), request.getRegistrationDate(), request.getEndDate(),
                 request.getRemarks(), request.getVerified());
@@ -130,5 +136,19 @@ public class EmployeeDocumentController {
     public ResponseEntity<Void> deleteDocument(@PathVariable Long documentId) {
         documentService.deleteDocument(documentId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/export")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','HRMS_ADMIN','HR','MANAGER')")
+    public ResponseEntity<Resource> exportDocuments() {
+        String tenantId = com.example.multi_tanent.config.TenantContext.getTenantId();
+        org.springframework.core.io.InputStreamResource file = new org.springframework.core.io.InputStreamResource(
+                hrmsReportService.generateEmployeeDocumentReport(tenantId));
+        String filename = "Employee_Documents_Report.xlsx";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(
+                        MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
     }
 }

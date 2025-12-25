@@ -28,4 +28,7 @@ public class SalaryComponentRequest {
 
     @NotNull(message = "isPartOfGrossSalary flag must be provided.")
     private Boolean isPartOfGrossSalary = true;
+
+    private Boolean isWpsIncluded = true; // Optional, default true if null? Service can handle default.
+    private Boolean isVariable = false;
 }

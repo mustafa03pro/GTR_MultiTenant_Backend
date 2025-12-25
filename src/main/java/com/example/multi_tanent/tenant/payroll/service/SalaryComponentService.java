@@ -17,7 +17,8 @@ public class SalaryComponentService {
     private final SalaryComponentRepository salaryComponentRepository;
     private final SalaryStructureComponentRepository salaryStructureComponentRepository;
 
-    public SalaryComponentService(SalaryComponentRepository salaryComponentRepository, SalaryStructureComponentRepository salaryStructureComponentRepository) {
+    public SalaryComponentService(SalaryComponentRepository salaryComponentRepository,
+            SalaryStructureComponentRepository salaryStructureComponentRepository) {
         this.salaryComponentRepository = salaryComponentRepository;
         this.salaryStructureComponentRepository = salaryStructureComponentRepository;
     }
@@ -28,8 +29,10 @@ public class SalaryComponentService {
         component.setCode(request.getCode());
         component.setType(request.getType());
         component.setCalculationType(request.getCalculationType());
-        component.setTaxable(request.getIsTaxable());
-        component.setPartOfGrossSalary(request.getIsPartOfGrossSalary());
+        component.setIsTaxable(request.getIsTaxable());
+        component.setIsPartOfGrossSalary(request.getIsPartOfGrossSalary());
+        component.setIsWpsIncluded(request.getIsWpsIncluded() != null ? request.getIsWpsIncluded() : true);
+        component.setIsVariable(request.getIsVariable() != null ? request.getIsVariable() : false);
         return salaryComponentRepository.save(component);
     }
 
@@ -50,14 +53,17 @@ public class SalaryComponentService {
         component.setCode(request.getCode());
         component.setType(request.getType());
         component.setCalculationType(request.getCalculationType());
-        component.setTaxable(request.getIsTaxable());
-        component.setPartOfGrossSalary(request.getIsPartOfGrossSalary());
+        component.setIsTaxable(request.getIsTaxable());
+        component.setIsPartOfGrossSalary(request.getIsPartOfGrossSalary());
+        component.setIsWpsIncluded(request.getIsWpsIncluded() != null ? request.getIsWpsIncluded() : true);
+        component.setIsVariable(request.getIsVariable() != null ? request.getIsVariable() : false);
         return salaryComponentRepository.save(component);
     }
 
     public void deleteSalaryComponent(Long id) {
         if (salaryStructureComponentRepository.existsBySalaryComponentId(id)) {
-            throw new IllegalStateException("Cannot delete salary component. It is currently used in one or more salary structures.");
+            throw new IllegalStateException(
+                    "Cannot delete salary component. It is currently used in one or more salary structures.");
         }
         salaryComponentRepository.deleteById(id);
     }

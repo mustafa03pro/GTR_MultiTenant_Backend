@@ -10,7 +10,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "payslips", indexes = {
-    @Index(name = "idx_payslip_employee_period", columnList = "employee_id, year, month")
+        @Index(name = "idx_payslip_employee_period", columnList = "employee_id, year, month")
 })
 @Data
 public class Payslip {
@@ -43,6 +43,18 @@ public class Payslip {
 
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal netSalary;
+
+    @Column(name = "work_expenses", precision = 15, scale = 2)
+    private BigDecimal workExpenses = BigDecimal.ZERO;
+
+    @Column(name = "net_additions", precision = 15, scale = 2)
+    private BigDecimal netAdditions = BigDecimal.ZERO;
+
+    @Column(name = "arrears_addition", precision = 15, scale = 2)
+    private BigDecimal arrearsAddition = BigDecimal.ZERO;
+
+    @Column(name = "arrears_deduction", precision = 15, scale = 2)
+    private BigDecimal arrearsDeduction = BigDecimal.ZERO;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

@@ -1,8 +1,10 @@
 package com.example.multi_tanent.spersusers.enitity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
@@ -13,6 +15,8 @@ import java.util.List;
 @Table(name = "company_info")
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @ToString(exclude = { "locations", "bankAccounts", "tenant" })
 public class CompanyInfo {
     @Id
@@ -53,6 +57,12 @@ public class CompanyInfo {
 
     @Column(name = "mohre_establishment_id")
     private String mohreEstablishmentId; // Ministry of Human Resources & Emiratisation ID
+
+    @Column(name = "visa_quota_total")
+    private Integer visaQuotaTotal;
+
+    @Column(name = "employer_bank_routing_code")
+    private String employerBankRoutingCode; // Agent ID (Bank routing code for WPS)
 
     @OneToMany(mappedBy = "companyInfo", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CompanyLocation> locations;

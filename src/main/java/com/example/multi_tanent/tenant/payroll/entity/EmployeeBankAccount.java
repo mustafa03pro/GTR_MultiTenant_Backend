@@ -26,6 +26,12 @@ public class EmployeeBankAccount {
     @Column(nullable = false)
     private String ifscCode;
 
+    @Column(length = 34)
+    private String iban;
+
+    @Column(name = "routing_code")
+    private String routingCode; // Agent ID (Bank routing code for WPS)
+
     private String accountHolderName;
 
     private boolean isPrimary;

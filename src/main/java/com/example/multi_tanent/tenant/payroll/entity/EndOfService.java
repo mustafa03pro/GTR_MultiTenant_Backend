@@ -1,6 +1,7 @@
 package com.example.multi_tanent.tenant.payroll.entity;
 
 import com.example.multi_tanent.spersusers.enitity.Employee;
+import com.example.multi_tanent.tenant.payroll.enums.TerminationReason;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -38,6 +39,9 @@ public class EndOfService {
 
     @Column(length = 1000)
     private String calculationDetails; // Store a summary of the calculation logic used
+
+    @Enumerated(EnumType.STRING)
+    private TerminationReason terminationReason;
 
     private boolean isPaid = false;
 

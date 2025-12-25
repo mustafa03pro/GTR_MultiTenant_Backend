@@ -134,7 +134,7 @@ public class PdfGenerationService {
     CompanyInfo companyInfo = data.getCompanyInfo(); // Keep this for local use
     if (companyInfo != null && companyInfo.getLogoUrl() != null && !companyInfo.getLogoUrl().isEmpty()) {
       try {
-        Resource logoResource = fileStorageService.loadFileAsResource(companyInfo.getLogoUrl());
+        Resource logoResource = fileStorageService.loadFileAsResource(companyInfo.getLogoUrl(), true);
         byte[] logoBytes = logoResource.getInputStream().readAllBytes();
         String base64Logo = Base64.getEncoder().encodeToString(logoBytes);
         String mimeType = logoResource.getURL().openConnection().getContentType();

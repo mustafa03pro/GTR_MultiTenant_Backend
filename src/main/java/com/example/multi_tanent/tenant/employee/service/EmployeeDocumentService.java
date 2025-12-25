@@ -11,8 +11,15 @@ import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.example.multi_tanent.config.TenantContext;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,9 +33,9 @@ public class EmployeeDocumentService {
     private final DocumentTypeRepository documentTypeRepository;
 
     public EmployeeDocumentService(EmployeeDocumentRepository documentRepository,
-                                   EmployeeRepository employeeRepository,
-                                   FileStorageService fileStorageService,
-                                   DocumentTypeRepository documentTypeRepository) {
+            EmployeeRepository employeeRepository,
+            FileStorageService fileStorageService,
+            DocumentTypeRepository documentTypeRepository) {
         this.documentRepository = documentRepository;
         this.employeeRepository = employeeRepository;
         this.fileStorageService = fileStorageService;
@@ -36,7 +43,7 @@ public class EmployeeDocumentService {
     }
 
     public EmployeeDocument storeDocument(MultipartFile file, String employeeCode, Long docTypeId, String documentId,
-                                          LocalDate registrationDate, LocalDate endDate, String remarks) {
+            LocalDate registrationDate, LocalDate endDate, String remarks) {
         Employee employee = employeeRepository.findByEmployeeCode(employeeCode)
                 .orElseThrow(() -> new RuntimeException("Employee not found with code: " + employeeCode));
 
@@ -78,13 +85,13 @@ public class EmployeeDocumentService {
     public void deleteDocument(Long documentId) {
         EmployeeDocument doc = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Document not found with id: " + documentId));
-        
+
         fileStorageService.deleteFile(doc.getFileName());
         documentRepository.delete(doc);
     }
-    
+
     public EmployeeDocument updateDocumentDetails(Long documentId, Long docTypeId, String newDocumentId,
-                                                  LocalDate registrationDate, LocalDate endDate, String remarks, Boolean verified) {
+            LocalDate registrationDate, LocalDate endDate, String remarks, Boolean verified) {
         EmployeeDocument doc = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Document not found with id: " + documentId));
 
@@ -97,7 +104,7 @@ public class EmployeeDocumentService {
         doc.setEndDate(endDate);
         doc.setRemarks(remarks);
         doc.setVerified(verified);
-        
+
         return documentRepository.save(doc);
     }
 }

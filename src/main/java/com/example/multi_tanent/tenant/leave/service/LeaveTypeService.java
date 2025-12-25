@@ -22,10 +22,10 @@ public class LeaveTypeService {
     private final LeaveTypePolicyRepository leaveTypePolicyRepository;
 
     public LeaveTypeService(LeaveTypeRepository leaveTypeRepository,
-                            LeaveBalanceRepository leaveBalanceRepository,
-                            LeaveAllocationRepository leaveAllocationRepository,
-                            LeaveRequestRepository leaveRequestRepository,
-                            LeaveTypePolicyRepository leaveTypePolicyRepository) {
+            LeaveBalanceRepository leaveBalanceRepository,
+            LeaveAllocationRepository leaveAllocationRepository,
+            LeaveRequestRepository leaveRequestRepository,
+            LeaveTypePolicyRepository leaveTypePolicyRepository) {
         this.leaveTypeRepository = leaveTypeRepository;
         this.leaveBalanceRepository = leaveBalanceRepository;
         this.leaveAllocationRepository = leaveAllocationRepository;
@@ -37,7 +37,8 @@ public class LeaveTypeService {
         Optional<LeaveType> existing = leaveTypeRepository.findByLeaveTypeIgnoreCase(request.getLeaveType());
         if (existing.isPresent()) {
             if (existing.get().isActive()) {
-                throw new IllegalStateException("An active leave type with name '" + request.getLeaveType() + "' already exists.");
+                throw new IllegalStateException(
+                        "An active leave type with name '" + request.getLeaveType() + "' already exists.");
             }
             // If it's inactive, reactivate and update it directly.
             LeaveType leaveTypeToUpdate = existing.get();
@@ -69,11 +70,12 @@ public class LeaveTypeService {
     public LeaveType updateLeaveType(Long id, LeaveTypeRequest request) {
         LeaveType leaveType = leaveTypeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Leave type not found with id: " + id));
-        
+
         // If name is being changed, check if the new name already exists
         if (!leaveType.getLeaveType().equalsIgnoreCase(request.getLeaveType())) {
             leaveTypeRepository.findByLeaveTypeIgnoreCase(request.getLeaveType()).ifPresent(lt -> {
-                throw new IllegalStateException("Another leave type with name '" + request.getLeaveType() + "' already exists.");
+                throw new IllegalStateException(
+                        "Another leave type with name '" + request.getLeaveType() + "' already exists.");
             });
         }
 
@@ -87,7 +89,8 @@ public class LeaveTypeService {
                 .orElseThrow(() -> new IllegalStateException("LeaveType not found with id: " + id));
 
         if (leaveTypePolicyRepository.existsByLeaveTypeId(id)) {
-            throw new DataIntegrityViolationException("Cannot deactivate this leave type. It is currently in use in one or more leave policies.");
+            throw new DataIntegrityViolationException(
+                    "Cannot deactivate this leave type. It is currently in use in one or more leave policies.");
         }
 
         leaveType.setActive(false);
@@ -99,10 +102,13 @@ public class LeaveTypeService {
         leaveType.setDescription(request.getDescription());
         leaveType.setIsPaid(request.getIsPaid());
         leaveType.setMaxDaysPerYear(request.getMaxDaysPerYear());
+        leaveType.setStartTime(request.getStartTime());
+        leaveType.setEndTime(request.getEndTime());
     }
 
     // public List<LeaveType> getActiveLeaveTypes() {
-    //     // TODO Auto-generated method stub
-    //     throw new UnsupportedOperationException("Unimplemented method 'getActiveLeaveTypes'");
+    // // TODO Auto-generated method stub
+    // throw new UnsupportedOperationException("Unimplemented method
+    // 'getActiveLeaveTypes'");
     // }
 }

@@ -4,5 +4,6 @@ public enum EmployeeStatus {
     ONBOARDING,
     ACTIVE,
     INACTIVE,
-    TERMINATED
+    TERMINATED,
+    ABSCONDING
 }

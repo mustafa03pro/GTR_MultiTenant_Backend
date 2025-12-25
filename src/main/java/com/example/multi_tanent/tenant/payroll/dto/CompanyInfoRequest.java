@@ -10,7 +10,7 @@ public class CompanyInfoRequest {
     private String companyName;
     private String address;
     private String city;
-   private String emirate;
+    private String emirate;
     private String poBox;
     private String country;
     private String phone;
@@ -21,4 +21,6 @@ public class CompanyInfoRequest {
     private LocalDate tradeLicenseExpiry;
     private String trn; // Tax Registration Number
     private String mohreEstablishmentId;
+    private String employerBankRoutingCode;
+    private Integer visaQuotaTotal;
 }

@@ -9,5 +9,8 @@ import java.util.Optional;
 
 public interface ProProcessRepository extends JpaRepository<ProProcess, Long> {
     Page<ProProcess> findByTenantId(Long tenantId, Pageable pageable);
+
     Optional<ProProcess> findByIdAndTenantId(Long id, Long tenantId);
+
+    Optional<ProProcess> findByTenantIdAndId(Long tenantId, Long id);
 }

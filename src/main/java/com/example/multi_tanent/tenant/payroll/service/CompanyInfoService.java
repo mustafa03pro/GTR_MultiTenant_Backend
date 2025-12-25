@@ -81,17 +81,48 @@ public class CompanyInfoService {
     public CompanyInfo uploadLogo(MultipartFile logoFile) {
         CompanyInfo companyInfo = getCompanyInfo();
         if (companyInfo == null) {
-            throw new IllegalStateException("CompanyInfo must be created before uploading a logo.");
+            companyInfo = new CompanyInfo();
+            // Ensure tenant is set if strictly required here, though usually done in
+            // createOrUpdate
+            String tenantIdStr = TenantContext.getTenantId();
+            Tenant tenant = tenantRepository.findByTenantId(tenantIdStr)
+                    .orElseThrow(() -> new IllegalStateException(
+                            "Cannot create CompanyInfo. Tenant not found with id: " + tenantIdStr));
+            companyInfo.setTenant(tenant);
+        }
+
+        String tenantId = TenantContext.getTenantId();
+        if (tenantId == null || tenantId.isEmpty()) {
+            throw new IllegalStateException("Tenant ID not found in context");
         }
 
         // If a logo already exists, delete the old one first.
         if (companyInfo.getLogoUrl() != null && !companyInfo.getLogoUrl().isEmpty()) {
-            fileStorageService.deleteFile(companyInfo.getLogoUrl());
+            // Construct path relative to storage root for deletion: tenantId/logo/filename
+            String oldFilePath = tenantId + "/" + companyInfo.getLogoUrl();
+            fileStorageService.deleteFile(oldFilePath);
         }
 
-        String filePath = fileStorageService.storeFile(logoFile, "logos");
-        companyInfo.setLogoUrl(filePath);
-        return companyInfoRepository.save(companyInfo);
+        try {
+            // Generate filename: timestamp + "_logo." + extension
+            String originalFilename = logoFile.getOriginalFilename();
+            String extension = "";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            }
+            // Use user requested format: millisec + "_logo" + extension
+            String newFilename = System.currentTimeMillis() + "_logo" + extension;
+
+            // Use storeFile with byte[] to control the filename and reuse existing logic
+            // providing "logo" as subdirectory.
+            // This returns "logo/filename"
+            String filePath = fileStorageService.storeFile(logoFile.getBytes(), "logo", newFilename);
+
+            companyInfo.setLogoUrl(filePath);
+            return companyInfoRepository.save(companyInfo);
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Failed to read logo file bytes", e);
+        }
     }
 
     public Resource getLogoAsResource() {
@@ -99,7 +130,8 @@ public class CompanyInfoService {
         if (companyInfo == null || companyInfo.getLogoUrl() == null || companyInfo.getLogoUrl().isEmpty()) {
             throw new EntityNotFoundException("Company logo has not been uploaded.");
         }
-        return fileStorageService.loadFileAsResource(companyInfo.getLogoUrl());
+        // Load resource using tenant-specific flag = true
+        return fileStorageService.loadFileAsResource(companyInfo.getLogoUrl(), true);
     }
 
     private void mapCompanyInfoRequestToEntity(CompanyInfoRequest request, CompanyInfo entity) {
@@ -118,5 +150,7 @@ public class CompanyInfoService {
         entity.setTradeLicenseExpiry(request.getTradeLicenseExpiry());
         entity.setTrn(request.getTrn());
         entity.setMohreEstablishmentId(request.getMohreEstablishmentId());
+        entity.setEmployerBankRoutingCode(request.getEmployerBankRoutingCode());
+        entity.setVisaQuotaTotal(request.getVisaQuotaTotal());
     }
 }

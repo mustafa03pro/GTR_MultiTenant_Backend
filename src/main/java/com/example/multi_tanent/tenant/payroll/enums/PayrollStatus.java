@@ -4,5 +4,5 @@ public enum PayrollStatus {
     DRAFT,
     GENERATED,
     PAID,
-    REVERTED
+    REVERTED, PROCESSING, COMPLETED
 }

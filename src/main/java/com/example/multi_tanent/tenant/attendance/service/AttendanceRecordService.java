@@ -44,14 +44,14 @@ public class AttendanceRecordService {
     private final HolidayPolicyRepository holidayPolicyRepository;
 
     public AttendanceRecordService(AttendanceRecordRepository attendanceRepository,
-                                   EmployeeRepository employeeRepository,
-                                   AttendancePolicyRepository attendancePolicyRepository,
-                                   AttendanceSettingRepository attendanceSettingRepository,
-                                   LeaveRequestRepository leaveRequestRepository,
-                                   EmployeeBiometricMappingRepository mappingRepository,
-                                   BiometricDeviceRepository deviceRepository,
-                                   TimeAttendenceRepository timeAttendenceRepository,
-                                   HolidayPolicyRepository holidayPolicyRepository) {
+            EmployeeRepository employeeRepository,
+            AttendancePolicyRepository attendancePolicyRepository,
+            AttendanceSettingRepository attendanceSettingRepository,
+            LeaveRequestRepository leaveRequestRepository,
+            EmployeeBiometricMappingRepository mappingRepository,
+            BiometricDeviceRepository deviceRepository,
+            TimeAttendenceRepository timeAttendenceRepository,
+            HolidayPolicyRepository holidayPolicyRepository) {
         this.attendanceRepository = attendanceRepository;
         this.employeeRepository = employeeRepository;
         this.attendancePolicyRepository = attendancePolicyRepository;
@@ -64,9 +64,11 @@ public class AttendanceRecordService {
     }
 
     public AttendanceRecordResponse markAttendance(AttendanceRecordRequest request) {
-        attendanceRepository.findByEmployeeEmployeeCodeAndAttendanceDate(request.getEmployeeCode(), request.getAttendanceDate())
+        attendanceRepository
+                .findByEmployeeEmployeeCodeAndAttendanceDate(request.getEmployeeCode(), request.getAttendanceDate())
                 .ifPresent(rec -> {
-                    throw new RuntimeException("Attendance record for employee " + request.getEmployeeCode() + " on " + request.getAttendanceDate() + " already exists.");
+                    throw new RuntimeException("Attendance record for employee " + request.getEmployeeCode() + " on "
+                            + request.getAttendanceDate() + " already exists.");
                 });
 
         Employee employee = employeeRepository.findByEmployeeCode(request.getEmployeeCode())
@@ -79,7 +81,8 @@ public class AttendanceRecordService {
         record.setCheckOut(request.getCheckOut());
         record.setRemarks(request.getRemarks());
 
-        // If status is provided manually (e.g., ON_LEAVE, ABSENT), use it. Otherwise, determine from check-in.
+        // If status is provided manually (e.g., ON_LEAVE, ABSENT), use it. Otherwise,
+        // determine from check-in.
         if (request.getStatus() != null) {
             record.setStatus(request.getStatus());
             updatePayableDays(record);
@@ -114,7 +117,8 @@ public class AttendanceRecordService {
         // Reset calculated fields before reapplying logic
         record.setIsLate(false);
         record.setOvertimeMinutes(0);
-        // Also reset status to a baseline before policy logic, which might override it (e.g., to HALF_DAY).
+        // Also reset status to a baseline before policy logic, which might override it
+        // (e.g., to HALF_DAY).
         if (record.getStatus() != AttendanceStatus.ABSENT && record.getStatus() != AttendanceStatus.ON_LEAVE) {
             record.setStatus(AttendanceStatus.PRESENT);
         }
@@ -133,7 +137,8 @@ public class AttendanceRecordService {
     private void applyAttendancePolicyLogic(AttendanceRecord record, Long overrideAttendancePolicyId) {
         AttendancePolicy attendancePolicy = findAttendancePolicy(overrideAttendancePolicyId, record.getEmployee());
 
-        if (attendancePolicy == null || attendancePolicy.getShiftPolicy() == null || attendancePolicy.getCapturingPolicy() == null) {
+        if (attendancePolicy == null || attendancePolicy.getShiftPolicy() == null
+                || attendancePolicy.getCapturingPolicy() == null) {
             // Not enough policy information to calculate late status or overtime.
             return;
         }
@@ -143,29 +148,35 @@ public class AttendanceRecordService {
         AttendanceCapturingPolicy capturingPolicy = attendancePolicy.getCapturingPolicy();
         LeaveDeductionConfig leaveConfig = attendancePolicy.getLeaveDeductionConfig();
 
-        // Reset status to PRESENT before checks. This ensures that if a record was previously
-        // HALF_DAY and is now corrected, it reverts to PRESENT unless the half-day condition still applies.
-        // We only do this if the status is not manually set to something else like ABSENT.
+        // Reset status to PRESENT before checks. This ensures that if a record was
+        // previously
+        // HALF_DAY and is now corrected, it reverts to PRESENT unless the half-day
+        // condition still applies.
+        // We only do this if the status is not manually set to something else like
+        // ABSENT.
         record.setStatus(AttendanceStatus.PRESENT);
 
         // Calculate Late Status
         if (record.getCheckIn() != null) {
-            LocalTime lateThreshold = shiftPolicy.getShiftStartTime().plusMinutes(capturingPolicy.getGraceTimeMinutes());
+            LocalTime lateThreshold = shiftPolicy.getShiftStartTime()
+                    .plusMinutes(capturingPolicy.getGraceTimeMinutes());
             if (record.getCheckIn().isAfter(lateThreshold)) {
                 record.setIsLate(true);
             }
         }
 
         // Calculate Half_day Status
-        if (record.getCheckIn() != null){
-            LocalTime halfDayThreshold = shiftPolicy.getShiftStartTime().plusMinutes(capturingPolicy.getHalfDayThresholdMinutes());
+        if (record.getCheckIn() != null) {
+            LocalTime halfDayThreshold = shiftPolicy.getShiftStartTime()
+                    .plusMinutes(capturingPolicy.getHalfDayThresholdMinutes());
             if (record.getCheckIn().isAfter(halfDayThreshold)) {
                 record.setStatus(AttendanceStatus.HALF_DAY);
             }
         }
 
         // Calculate Early Going (if configured)
-        if (leaveConfig != null && Boolean.TRUE.equals(leaveConfig.getPenalizeEarlyGoing()) && record.getCheckOut() != null) {
+        if (leaveConfig != null && Boolean.TRUE.equals(leaveConfig.getPenalizeEarlyGoing())
+                && record.getCheckOut() != null) {
             if (record.getCheckOut().isBefore(shiftPolicy.getShiftEndTime())) {
                 // You can add more specific logic here, like marking it as a half-day
                 // or just flagging it. For now, we'll add a remark.
@@ -195,10 +206,17 @@ public class AttendanceRecordService {
             case ABSENT:
                 // Check if it's an unpaid leave day
                 boolean isUnpaidLeave = leaveRequestRepository.findByEmployeeId(record.getEmployee().getId()).stream()
-                        .anyMatch(leave -> leave.getStatus() == com.example.multi_tanent.tenant.leave.enums.LeaveStatus.APPROVED &&
-                                !record.getAttendanceDate().isBefore(leave.getFromDate()) && !record.getAttendanceDate().isAfter(leave.getToDate()) &&
+                        .anyMatch(leave -> leave
+                                .getStatus() == com.example.multi_tanent.tenant.leave.enums.LeaveStatus.APPROVED &&
+                                !record.getAttendanceDate().isBefore(leave.getFromDate())
+                                && !record.getAttendanceDate().isAfter(leave.getToDate()) &&
                                 leave.getLeaveType() != null && !leave.getLeaveType().getIsPaid());
-                record.setPayableDays(isUnpaidLeave ? BigDecimal.ZERO : BigDecimal.ONE); // If absent but not on unpaid leave, it might be a different issue. Payroll can decide. For now, let's assume it's payable unless explicitly unpaid.
+                record.setPayableDays(isUnpaidLeave ? BigDecimal.ZERO : BigDecimal.ONE); // If absent but not on unpaid
+                                                                                         // leave, it might be a
+                                                                                         // different issue. Payroll can
+                                                                                         // decide. For now, let's
+                                                                                         // assume it's payable unless
+                                                                                         // explicitly unpaid.
                 break;
             default:
                 record.setPayableDays(BigDecimal.ZERO);
@@ -221,10 +239,12 @@ public class AttendanceRecordService {
     }
 
     @Transactional(readOnly = true)
-    public List<AttendanceRecord> getAttendanceForEmployee(String employeeCode, LocalDate startDate, LocalDate endDate) {
+    public List<AttendanceRecord> getAttendanceForEmployee(String employeeCode, LocalDate startDate,
+            LocalDate endDate) {
         employeeRepository.findByEmployeeCode(employeeCode)
                 .orElseThrow(() -> new RuntimeException("Employee not found with code: " + employeeCode));
-        return attendanceRepository.findByEmployeeEmployeeCodeAndAttendanceDateBetweenWithDetails(employeeCode, startDate, endDate);
+        return attendanceRepository.findByEmployeeEmployeeCodeAndAttendanceDateBetweenWithDetails(employeeCode,
+                startDate, endDate);
     }
 
     @Transactional(readOnly = true)
@@ -241,7 +261,8 @@ public class AttendanceRecordService {
 
     /**
      * Processes an attendance punch from a biometric device.
-     * It finds the corresponding employee and creates or updates their attendance record for the day.
+     * It finds the corresponding employee and creates or updates their attendance
+     * record for the day.
      *
      * @param punchRequest The data from the biometric device.
      * @return The saved AttendanceRecord.
@@ -249,14 +270,19 @@ public class AttendanceRecordService {
     public AttendanceRecord processBiometricPunch(BiometricPunchRequest punchRequest) {
         // 1. Find device
         BiometricDevice device = deviceRepository.findByDeviceIdentifier(punchRequest.getDeviceIdentifier())
-                .orElseThrow(() -> new RuntimeException("Biometric device with identifier '" + punchRequest.getDeviceIdentifier() + "' not found."));
+                .orElseThrow(() -> new RuntimeException(
+                        "Biometric device with identifier '" + punchRequest.getDeviceIdentifier() + "' not found."));
 
         // 2. Find employee mapping for the given device
-        EmployeeBiometricMapping mapping = mappingRepository.findByBiometricIdentifierAndDeviceId(punchRequest.getBiometricIdentifier(), device.getId())
-                .orElseThrow(() -> new RuntimeException("No employee mapping found for biometric ID '" + punchRequest.getBiometricIdentifier() + "' on device '" + device.getDeviceIdentifier() + "'."));
+        EmployeeBiometricMapping mapping = mappingRepository
+                .findByBiometricIdentifierAndDeviceId(punchRequest.getBiometricIdentifier(), device.getId())
+                .orElseThrow(() -> new RuntimeException(
+                        "No employee mapping found for biometric ID '" + punchRequest.getBiometricIdentifier()
+                                + "' on device '" + device.getDeviceIdentifier() + "'."));
 
         if (!Boolean.TRUE.equals(mapping.getActive())) {
-            throw new RuntimeException("Employee mapping is inactive for biometric ID: " + punchRequest.getBiometricIdentifier());
+            throw new RuntimeException(
+                    "Employee mapping is inactive for biometric ID: " + punchRequest.getBiometricIdentifier());
         }
 
         Employee employee = mapping.getEmployee();
@@ -264,7 +290,8 @@ public class AttendanceRecordService {
         LocalTime punchLocalTime = punchTime.toLocalTime();
 
         // Determine the correct attendance date, accounting for overnight shifts.
-        // We'll use a "day cutoff" time. Punches before this time belong to the previous day.
+        // We'll use a "day cutoff" time. Punches before this time belong to the
+        // previous day.
         // This could be made configurable in AttendanceSetting in the future.
         final LocalTime DAY_CUTOFF = LocalTime.of(5, 0); // 5:00 AM
 
@@ -277,17 +304,21 @@ public class AttendanceRecordService {
         }
 
         boolean onLeave = leaveRequestRepository.findByEmployeeId(employee.getId()).stream()
-                .anyMatch(leave -> leave.getStatus() == com.example.multi_tanent.tenant.leave.enums.LeaveStatus.APPROVED &&
+                .anyMatch(leave -> leave.getStatus() == com.example.multi_tanent.tenant.leave.enums.LeaveStatus.APPROVED
+                        &&
                         !punchDate.isBefore(leave.getFromDate()) && !punchDate.isAfter(leave.getToDate()));
 
         if (onLeave) {
-            throw new IllegalStateException("Cannot process punch. Employee " + employee.getEmployeeCode() + " is on approved leave for " + punchDate);
+            throw new IllegalStateException("Cannot process punch. Employee " + employee.getEmployeeCode()
+                    + " is on approved leave for " + punchDate);
         }
         // Find or create an attendance record for the determined attendance date
-        AttendanceRecord record = attendanceRepository.findByEmployeeEmployeeCodeAndAttendanceDate(employee.getEmployeeCode(), punchDate)
+        AttendanceRecord record = attendanceRepository
+                .findByEmployeeEmployeeCodeAndAttendanceDate(employee.getEmployeeCode(), punchDate)
                 .orElse(new AttendanceRecord());
 
-        // 4. Logic for check-in vs check-out. First punch is check-in, subsequent punches update check-out.
+        // 4. Logic for check-in vs check-out. First punch is check-in, subsequent
+        // punches update check-out.
         if (record.getId() == null) { // This is a new record for the day (first punch)
             record.setEmployee(employee);
             record.setAttendanceDate(punchDate);
@@ -298,16 +329,19 @@ public class AttendanceRecordService {
         } else { // This is a subsequent punch for the day
             record.setCheckOut(punchLocalTime);
             // Re-apply logic to calculate overtime if applicable
-            applyAttendancePolicyLogic(record, record.getAttendancePolicy() != null ? record.getAttendancePolicy().getId() : null);
+            applyAttendancePolicyLogic(record,
+                    record.getAttendancePolicy() != null ? record.getAttendancePolicy().getId() : null);
         }
 
         return attendanceRepository.save(record);
     }
 
     /**
-     * Scheduled task to automatically mark employees as absent if they haven't checked in.
+     * Scheduled task to automatically mark employees as absent if they haven't
+     * checked in.
      * This runs daily at a configured time (e.g., 6 PM).
-     * Note: For this to work in a multi-tenant environment, the scheduler must be adapted to
+     * Note: For this to work in a multi-tenant environment, the scheduler must be
+     * adapted to
      * iterate over all tenants and execute this logic within each tenant's context.
      */
     public void autoMarkAbsentEmployees() {
@@ -315,9 +349,11 @@ public class AttendanceRecordService {
     }
 
     /**
-     * Scheduled task to automatically mark employees as absent if they haven't checked in for a specific date.
+     * Scheduled task to automatically mark employees as absent if they haven't
+     * checked in for a specific date.
      * This can be run manually or by a scheduler.
-     * Note: For this to work in a multi-tenant environment, the scheduler must be adapted to
+     * Note: For this to work in a multi-tenant environment, the scheduler must be
+     * adapted to
      * iterate over all tenants and execute this logic within each tenant's context.
      *
      * @param date The date for which to mark absentees.
@@ -331,7 +367,8 @@ public class AttendanceRecordService {
         List<Employee> activeEmployees = employeeRepository.findByStatus(EmployeeStatus.ACTIVE);
 
         for (Employee employee : activeEmployees) {
-            boolean recordExists = attendanceRepository.findByEmployeeEmployeeCodeAndAttendanceDate(employee.getEmployeeCode(), date).isPresent();
+            boolean recordExists = attendanceRepository
+                    .findByEmployeeEmployeeCodeAndAttendanceDate(employee.getEmployeeCode(), date).isPresent();
 
             if (recordExists) {
                 continue; // Skip if a record already exists for this employee on this date.
@@ -339,22 +376,23 @@ public class AttendanceRecordService {
 
             // Before marking absent, check if the employee is on an approved leave.
             boolean onPaidLeave = leaveRequestRepository.findByEmployeeId(employee.getId()).stream()
-                    .anyMatch(leave -> leave.getStatus() == com.example.multi_tanent.tenant.leave.enums.LeaveStatus.APPROVED &&
+                    .anyMatch(leave -> leave
+                            .getStatus() == com.example.multi_tanent.tenant.leave.enums.LeaveStatus.APPROVED &&
                             leave.getLeaveType() != null && Boolean.TRUE.equals(leave.getLeaveType().getIsPaid()) &&
                             !date.isBefore(leave.getFromDate()) && !date.isAfter(leave.getToDate()));
 
             // Check if today is a weekly off day for the employee.
             Optional<TimeAttendence> timeAttendenceOpt = timeAttendenceRepository.findByEmployeeId(employee.getId());
             boolean isWeeklyOff = timeAttendenceOpt.map(TimeAttendence::getWeeklyOffPolicy)
-                                                 .map(policy -> policy.getOffDays().contains(date.getDayOfWeek()))
-                                                 .orElse(false);
+                    .map(policy -> policy.getOffDays().contains(date.getDayOfWeek()))
+                    .orElse(false);
 
             // Check if today is a holiday for the employee.
             boolean isHoliday = timeAttendenceOpt.map(TimeAttendence::getHolidayList)
-                                                 .flatMap(holidayPolicyRepository::findByName)
-                                                 .map(policy -> policy.getHolidays().stream()
-                                                         .anyMatch(holiday -> holiday.getDate().equals(date) && !holiday.isOptional()))
-                                                 .orElse(false);
+                    .flatMap(holidayPolicyRepository::findByName)
+                    .map(policy -> policy.getHolidays().stream()
+                            .anyMatch(holiday -> holiday.getDate().equals(date) && !holiday.isOptional()))
+                    .orElse(false);
 
             AttendanceRecord newRecord = new AttendanceRecord();
             newRecord.setEmployee(employee);
@@ -379,12 +417,15 @@ public class AttendanceRecordService {
     }
 
     public List<AttendanceRecord> getAttendanceForDate(LocalDate date) {
-        return attendanceRepository.findByAttendanceDateWithDetails(date);
+        String tenantId = com.example.multi_tanent.config.TenantContext.getTenantId();
+        return attendanceRepository.findAllByTenantIdAndDateWithDetails(tenantId, date);
     }
 
     /**
-     * Recalculates all derived fields for an existing attendance record, such as late status,
-     * overtime, and payable days, based on its current check-in/check-out times and the
+     * Recalculates all derived fields for an existing attendance record, such as
+     * late status,
+     * overtime, and payable days, based on its current check-in/check-out times and
+     * the
      * applicable attendance policies.
      *
      * @param attendanceRecordId The ID of the AttendanceRecord to recalculate.
@@ -392,14 +433,16 @@ public class AttendanceRecordService {
      */
     public AttendanceRecord recalculateAttendance(Long attendanceRecordId) {
         AttendanceRecord record = attendanceRepository.findById(attendanceRecordId)
-                .orElseThrow(() -> new EntityNotFoundException("AttendanceRecord not found with id: " + attendanceRecordId));
+                .orElseThrow(
+                        () -> new EntityNotFoundException("AttendanceRecord not found with id: " + attendanceRecordId));
 
         // Reset all calculated fields to their default state before re-evaluation.
         record.setIsLate(false);
         record.setOvertimeMinutes(0);
 
         // Determine the base status. If there's no check-in, it's ABSENT.
-        // Otherwise, start with PRESENT, and let the policy logic potentially change it to HALF_DAY.
+        // Otherwise, start with PRESENT, and let the policy logic potentially change it
+        // to HALF_DAY.
         if (record.getCheckIn() == null) {
             record.setStatus(AttendanceStatus.ABSENT);
             record.setAttendancePolicy(null); // No policy applies if absent

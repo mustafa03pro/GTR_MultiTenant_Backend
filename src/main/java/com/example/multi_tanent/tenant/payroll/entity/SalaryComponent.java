@@ -26,9 +26,15 @@ public class SalaryComponent {
     @Enumerated(EnumType.STRING)
     private CalculationType calculationType;
 
-    private boolean isTaxable;
+    private Boolean isTaxable;
 
-    private boolean partOfGrossSalary;
+    private Boolean isPartOfGrossSalary;
 
     private Integer displayOrder;
+
+    @Column(name = "is_wps_included")
+    private Boolean isWpsIncluded = true; // Default to true or false? Let's say false usually, but true for Basic.
+
+    @Column(name = "is_variable")
+    private Boolean isVariable = false; // Fixed by default
 }

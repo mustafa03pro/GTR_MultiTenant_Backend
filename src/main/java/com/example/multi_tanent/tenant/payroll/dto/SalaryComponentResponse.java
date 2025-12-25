@@ -18,12 +18,14 @@ public class SalaryComponentResponse {
     private CalculationType calculationType;
     private boolean isTaxable;
     private boolean isPartOfGrossSalary;
+    private boolean isWpsIncluded;
+    private boolean isVariable;
 
     public static SalaryComponentResponse fromEntity(SalaryComponent component) {
         return new SalaryComponentResponse(
                 component.getId(), component.getCode(), component.getName(),
                 component.getType(), component.getCalculationType(),
-                component.isTaxable(), component.isPartOfGrossSalary()
-        );
+                Boolean.TRUE.equals(component.getIsTaxable()), Boolean.TRUE.equals(component.getIsPartOfGrossSalary()),
+                Boolean.TRUE.equals(component.getIsWpsIncluded()), Boolean.TRUE.equals(component.getIsVariable()));
     }
 }

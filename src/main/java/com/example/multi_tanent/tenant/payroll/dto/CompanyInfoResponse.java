@@ -27,6 +27,7 @@ public class CompanyInfoResponse {
     private LocalDate tradeLicenseExpiry;
     private String trn;
     private String mohreEstablishmentId;
+    private String employerBankRoutingCode;
     private List<CompanyLocationResponse> locations;
     private List<CompanyBankAccountResponse> bankAccounts;
 
@@ -48,7 +49,8 @@ public class CompanyInfoResponse {
                 .tradeLicenseNumber(entity.getTradeLicenseNumber())
                 .tradeLicenseExpiry(entity.getTradeLicenseExpiry())
                 .trn(entity.getTrn())
-                .mohreEstablishmentId(entity.getMohreEstablishmentId());
+                .mohreEstablishmentId(entity.getMohreEstablishmentId())
+                .employerBankRoutingCode(entity.getEmployerBankRoutingCode());
 
         if (entity.getLocations() != null) {
             builder.locations(entity.getLocations().stream()

@@ -74,6 +74,24 @@ public class PayslipService {
         return payslips;
     }
 
+    public void updatePayslipsStatus(List<Payslip> payslips,
+            com.example.multi_tanent.tenant.payroll.enums.PayrollStatus status) {
+        if (payslips == null || payslips.isEmpty()) {
+            return;
+        }
+        for (Payslip payslip : payslips) {
+            payslip.setStatus(status);
+        }
+        payslipRepository.saveAll(payslips);
+    }
+
+    public Payslip updatePayslipStatus(Long id, com.example.multi_tanent.tenant.payroll.enums.PayrollStatus status) {
+        Payslip payslip = payslipRepository.findById(id)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Payslip not found with id: " + id));
+        payslip.setStatus(status);
+        return payslipRepository.save(payslip);
+    }
+
     /**
      * Initializes lazy-loaded associations of a Payslip entity to prevent
      * LazyInitializationException.

@@ -28,7 +28,8 @@ public class PayslipController {
     @GetMapping("/employee/{employeeCode}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<PayslipResponse>> getPayslipsForEmployee(@PathVariable String employeeCode) {
-        // TODO: Add security check to ensure user can only see their own payslips, or if they are HR/Admin.
+        // TODO: Add security check to ensure user can only see their own payslips, or
+        // if they are HR/Admin.
         List<PayslipResponse> payslips = payslipService.getPayslipsForEmployee(employeeCode).stream()
                 .map(PayslipResponse::fromEntity)
                 .collect(Collectors.toList());
@@ -44,6 +45,15 @@ public class PayslipController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @PutMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','HRMS_ADMIN','HR')")
+    public ResponseEntity<PayslipResponse> updatePayslipStatus(
+            @PathVariable Long id,
+            @RequestParam com.example.multi_tanent.tenant.payroll.enums.PayrollStatus status) {
+        var updatedPayslip = payslipService.updatePayslipStatus(id, status);
+        return ResponseEntity.ok(PayslipResponse.fromEntity(updatedPayslip));
+    }
+
     @GetMapping("/{id}/download")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<byte[]> downloadPayslipPdf(@PathVariable Long id) {
@@ -52,13 +62,15 @@ public class PayslipController {
                 .map(pdfData -> {
                     byte[] pdfBytes = pdfGenerationService.generatePayslipPdf(pdfData);
                     String filename = String.format("Payslip-%s-%d-%s.pdf",
-                            pdfData.getPayslip().getPayDate().getMonth().getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.ENGLISH),
+                            pdfData.getPayslip().getPayDate().getMonth()
+                                    .getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.ENGLISH),
                             pdfData.getPayslip().getYear(),
                             pdfData.getPayslip().getEmployee().getEmployeeCode());
 
                     HttpHeaders headers = new HttpHeaders();
                     headers.setContentType(MediaType.APPLICATION_PDF);
-                    // Use "attachment" to force download, or "inline" to suggest preview in browser.
+                    // Use "attachment" to force download, or "inline" to suggest preview in
+                    // browser.
                     headers.setContentDispositionFormData("attachment", filename);
                     headers.setContentLength(pdfBytes.length);
 
